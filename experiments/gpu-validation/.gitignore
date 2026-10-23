@@ -1,0 +1,4 @@
+results/
+*.tar.gz
+.venv/
+__pycache__/

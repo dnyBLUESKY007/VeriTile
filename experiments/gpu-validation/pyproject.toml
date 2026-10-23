@@ -1,0 +1,16 @@
+[project]
+name = "veritile-gpu-validation"
+version = "0.1.0"
+description = "Phase-1 PTX litmus tests for the VeriTile sm_90 trust base (2x H800, NVLink)"
+requires-python = ">=3.10,<3.13"
+dependencies = ["numpy>=2.0,<2.5"]
+
+# Pick exactly one CUDA variant: `uv sync --extra cu12` (default in run_all.sh) or `--extra cu13`.
+# NVRTC comes from NVIDIA's pip wheel, so the server needs only an NVIDIA driver, no CUDA Toolkit.
+[project.optional-dependencies]
+cu12 = ["cupy-cuda12x==14.2.0", "nvidia-cuda-nvrtc-cu12==12.9.86"]
+cu13 = ["cupy-cuda13x==14.2.0", "nvidia-cuda-nvrtc==13.2.78"]
+
+[tool.uv]
+package = false
+conflicts = [[{ extra = "cu12" }, { extra = "cu13" }]]
