@@ -183,3 +183,28 @@ weakLeanArgs = ["--tstack=65536"]
 [[lean_lib]]
 name = "FinalRegressions"
 globs = ["tests.lean.+"]
+
+# Fork targets for the async and distributed line. Each main target has its own
+# CI shard and is gated by scripts/check_fork_target.py: no `sorry`, no import
+# from VeriTile/Staging/, no new axiom. See VeriTile/Staging/README.md.
+[[lean_lib]]
+name = "VeriTileDist"
+globs = ["VeriTile.Dist", "VeriTile.Dist.+"]
+
+[[lean_lib]]
+name = "VeriTileTileLang"
+globs = ["VeriTile.TileLang", "VeriTile.TileLang.+"]
+
+[[lean_lib]]
+name = "VeriTileInterp"
+globs = ["VeriTile.Interp", "VeriTile.Interp.+"]
+
+[[lean_lib]]
+name = "VeriTileEquiv"
+globs = ["VeriTile.Equiv", "VeriTile.Equiv.+"]
+
+# Unproved statements of freeze tickets; the only fork target that may contain
+# `sorry`. No main target imports it.
+[[lean_lib]]
+name = "VeriTileStaging"
+globs = ["VeriTile.Staging.+"]

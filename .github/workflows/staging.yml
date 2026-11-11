@@ -1,0 +1,38 @@
+name: Staging target and frozen statements
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/workflows/staging.yml']
+  push:
+    branches: [main]
+    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/workflows/staging.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  staging:
+    name: Build staging, check frozen statements and gate regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+          build-args: VeriTileStaging
+          test: false
+          lint: false
+          use-mathlib-cache: auto
+      - name: Build the staging target
+        run: python3 scripts/check_fork_target.py VeriTileStaging
+      - name: Compare signed statements with their recorded fingerprints
+        run: python3 scripts/check_frozen_statements.py
+      - name: Exercise the gates on deliberate violations
+        run: python3 scripts/test_fork_targets.py

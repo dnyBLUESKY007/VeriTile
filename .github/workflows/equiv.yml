@@ -1,0 +1,23 @@
+name: Equiv target
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
+  push:
+    branches: [main]
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  equiv:
+    uses: ./.github/workflows/fork-target.yml
+    with:
+      library: VeriTileEquiv
