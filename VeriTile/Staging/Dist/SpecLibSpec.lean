@@ -10,16 +10,23 @@ any schedule. Tickets S7.2–S7.5 move each declaration to `VeriTile/Dist/Spec/`
 under the same name and type, prove the theorems and delete the stubs here.
 
 Ranks. A rank is an element of `Fin numRanks` for a parameter `numRanks : Nat`.
-The `Rank` type of the location model (ticket S1.1) is drafted in parallel and
-is not used here; the two drafts are joined at review.
+The location model (`VeriTile/Staging/Dist/LocationSpec.lean`, ticket S1.1)
+keeps `Rank := Nat`. The bridge between the two is `Fin.val`. This file does
+not import the location model.
 
 Arithmetic. Every value is a real number. No floating-point type and no
-rounding appears.
+rounding appears. Only `ReduceOrder.eval` is generic: it takes any carrier
+with a zero and an addition, and every definition here calls it at `ℝ`.
 
 Reduction order. A sum over ranks is the value of a `ReduceOrder`: a tree that
 fixes which operands are added and in what nesting. The specifications use no
 associativity or commutativity; `allReduce_eq_of_leaves_perm` is the only
-statement that relates two orders, and it is proved over `ℝ`.
+statement that relates two orders, and it is a statement over `ℝ`.
+
+MoE source. The MoE declarations follow the deduplicated layout
+(`do_expand=False`) of the DeepEP port in TileScale, branch
+`deepep-v2-intranode` at commit `c0f80cc5a5e386ae77075af9574701d3e0a99b00`,
+directory `examples/distributed/deepep_v2/`.
 
 Layout. An axis that holds one chunk of `n` rows per rank has `numRanks * n`
 rows, and row `q * n + i` is row `i` of the chunk of rank `q`
@@ -30,6 +37,7 @@ Decisions that the tickets left open:
     `TileIndex shape` of the Triton core is one instance.
  2. Issue #17: the reduction order is the tree with `zero`, `input` and `add`;
     a left fold over a list of operands is `ReduceOrder.ofList`.
+    `ReduceOrder.eval` is generic in the carrier of the sum.
  3. The order of a reduction may differ per destination rank and per element.
  4. Every reduction is a sum.
  5. `ReduceOrder` belongs to S7.2, the first ticket that needs it in a main
@@ -40,17 +48,29 @@ Decisions that the tickets left open:
     ranks in `gemmReduceScatter` keeps its order.
  8. In `allGatherGemm` the left operand is gathered and the right operand is
     local to each rank; in `gemmReduceScatter` both operands are local.
- 9. Variable-length all-to-all and MoE dispatch are relations between send and
-    receive buffers, because they fix only the rows that a table names. Their
-    buffers are indexed by a row in `Nat`; capacity is left to the kernel
-    contract.
+ 9. Variable-length all-to-all, MoE dispatch and MoE store-back are relations
+    between buffers, because they do not fix every row. Their buffers are
+    indexed by a row in `Nat`; capacity is left to the kernel contract.
 10. `AllToAllLayout.WellFormed` asks only that no receive row gets rows from
     two sources.
-11. An MoE token has a fixed number of copies; each copy goes to one rank and
-    one row. The weights are an argument of `moeCombine`, not of the table.
-12. An attention partial result is the softmax denominator and the normalized
+11. An MoE routing table gives each token a set of destination ranks, which
+    may be empty, and one weight per destination. A token is sent once to each
+    destination, also when it selects several experts there.
+12. The row that a token gets at a destination is not in the routing table,
+    because it depends on the schedule. A row assignment `MoERows` says which
+    token each receive row holds; `MoERouting.Assigns` says which assignments
+    a table allows; `MoEDispatch` takes the assignment as an argument.
+    Which rows of a buffer are used, and their grouping by source rank, are
+    not specified.
+13. MoE combine is two steps: the relation `MoEStoreBack` and the sum
+    `moeCombine`. Neither applies a weight; the weight is applied by the
+    expert step, between dispatch and combine. The expanded layout, the bias
+    of the combine and the gate weights that a dispatch delivers next to a
+    row are not specified.
+14. Ranks are `Fin numRanks` here and `Nat` in the location model.
+15. An attention partial result is the softmax denominator and the normalized
     output of one query row, with the denominator not in logarithmic form.
-13. Negative examples are concrete instances; S7.2–S7.5 choose them.
+16. Negative examples are concrete instances; S7.2–S7.5 choose them.
 -/
 import VeriTile.Triton.KernelLemmas.Matmul
 
@@ -73,8 +93,8 @@ inductive ReduceOrder (ι : Type) where
   | add : ReduceOrder ι → ReduceOrder ι → ReduceOrder ι
 
 /-- UNSIGNED. Owner: S7.2. The value of a sum in the given order, with `f i`
-as operand `i`. -/
-noncomputable def ReduceOrder.eval {ι : Type} (f : ι → ℝ) : ReduceOrder ι → ℝ
+as operand `i`, in any carrier `α` that has a zero and an addition. -/
+def ReduceOrder.eval {ι α : Type} [Zero α] [Add α] (f : ι → α) : ReduceOrder ι → α
   | .zero => 0
   | .input i => f i
   | .add l r => l.eval f + r.eval f
@@ -196,49 +216,77 @@ def AllToAllV {numRanks : Nat} {ι : Type} (L : AllToAllLayout numRanks)
 /-! ## MoE dispatch and combine, attention chunk merge (S7.5) -/
 
 /-- UNSIGNED. Owner: S7.5. The routing table of an MoE dispatch. Each rank has
-`numTokens` tokens and each token has `numCopies` copies. Copy `k` of token `t`
-of rank `s` goes to row `row s t k` of the buffer of rank `dest s t k`. -/
-structure MoERouting (numRanks numTokens numCopies : Nat) where
-  dest : Fin numRanks → Fin numTokens → Fin numCopies → Fin numRanks
-  row : Fin numRanks → Fin numTokens → Fin numCopies → Nat
+`numTokens` tokens. Token `t` of rank `s` is sent once to each rank in
+`dest s t`: the ranks that own an expert the token selects. The set may be
+empty. `weight s t d` is the sum of the gate weights of the experts on rank `d`
+that the token selects. -/
+structure MoERouting (numRanks numTokens : Nat) where
+  dest : Fin numRanks → Fin numTokens → Finset (Fin numRanks)
+  weight : Fin numRanks → Fin numTokens → Fin numRanks → ℝ
 
-/-- UNSIGNED. Owner: S7.5. The precondition of an MoE dispatch: no token is
-sent to one rank twice, and no row of a rank receives two copies. -/
-structure MoERouting.WellFormed {numRanks numTokens numCopies : Nat}
-    (R : MoERouting numRanks numTokens numCopies) : Prop where
-  dest_injective : ∀ s t, Function.Injective (R.dest s t)
-  slot_injective : Function.Injective fun c : Fin numRanks × Fin numTokens × Fin numCopies =>
-    (R.dest c.1 c.2.1 c.2.2, R.row c.1 c.2.1 c.2.2)
+/-- UNSIGNED. Owner: S7.5. A row assignment of an MoE dispatch: which token
+each row of each receive buffer holds. `rows d p = some (s, t)` says that row
+`p` of rank `d` holds token `t` of rank `s`; `none` says that the row holds no
+token. A row holds at most one token. The assignment is not fixed in advance:
+it depends on the schedule. -/
+abbrev MoERows (numRanks numTokens : Nat) : Type :=
+  Fin numRanks → Nat → Option (Fin numRanks × Fin numTokens)
 
-/-- UNSIGNED. Owner: S7.5. MoE dispatch. Every copy of a token arrives at the
-row and rank that the routing table names. Other rows are not constrained. -/
-def MoEDispatch {numRanks numTokens numCopies : Nat} {ι : Type}
-    (R : MoERouting numRanks numTokens numCopies)
-    (tokens : RankTensor numRanks (Fin numTokens × ι)) (recv : RankTensor numRanks (Nat × ι)) :
-    Prop :=
-  ∀ s t k j, recv (R.dest s t k) (R.row s t k, j) = tokens s (t, j)
+/-- UNSIGNED. Owner: S7.5. The row assignments that a routing table allows: a
+token has exactly one row on each rank it is sent to, and no row on any other
+rank. An assignment that holds one token in two rows of one rank is not
+allowed. -/
+structure MoERouting.Assigns {numRanks numTokens : Nat} (R : MoERouting numRanks numTokens)
+    (rows : MoERows numRanks numTokens) : Prop where
+  existsUnique_row : ∀ s t, ∀ d ∈ R.dest s t, ∃! p, rows d p = some (s, t)
+  mem_dest : ∀ d p s t, rows d p = some (s, t) → d ∈ R.dest s t
 
-/-- UNSIGNED. Owner: S7.5. MoE combine. Token `t` of rank `s` becomes the
-weighted sum of its copies, read back from the ranks that hold them; copy `k`
-has weight `weight s t k` and the copies are added in the order `order s t`. -/
-noncomputable def moeCombine {numRanks numTokens numCopies : Nat} {ι : Type}
-    (R : MoERouting numRanks numTokens numCopies)
-    (weight : Fin numRanks → Fin numTokens → Fin numCopies → ℝ)
-    (order : Fin numRanks → Fin numTokens → ReduceOrder (Fin numCopies))
-    (results : RankTensor numRanks (Nat × ι)) : RankTensor numRanks (Fin numTokens × ι) :=
-  fun s i => (order s i.1).eval fun k =>
-    weight s i.1 k * results (R.dest s i.1 k) (R.row s i.1 k, i.2)
+/-- UNSIGNED. Owner: S7.5. MoE dispatch with the row assignment `rows`. The
+routing table allows the assignment, and every row that holds a token holds
+the values of that token. Rows that hold no token are not constrained. A
+dispatch guarantees this for some `rows`, not for a given one. -/
+def MoEDispatch {numRanks numTokens : Nat} {ι : Type} (R : MoERouting numRanks numTokens)
+    (rows : MoERows numRanks numTokens) (tokens : RankTensor numRanks (Fin numTokens × ι))
+    (recv : RankTensor numRanks (Nat × ι)) : Prop :=
+  R.Assigns rows ∧ ∀ d p s t, rows d p = some (s, t) → ∀ j, recv d (p, j) = tokens s (t, j)
+
+/-- UNSIGNED. Owner: S7.5. The first step of an MoE combine. Every rank
+returns the result in each row that holds a token to the rank the token came
+from: `back s d (t, j)` is what rank `d` returns for token `t` of rank `s`.
+Entries for a rank that holds no row of the token are not constrained. -/
+def MoEStoreBack {numRanks numTokens : Nat} {ι : Type} (rows : MoERows numRanks numTokens)
+    (results : RankTensor numRanks (Nat × ι))
+    (back : Fin numRanks → RankTensor numRanks (Fin numTokens × ι)) : Prop :=
+  ∀ d p s t, rows d p = some (s, t) → ∀ j, back s d (t, j) = results d (p, j)
+
+/-- UNSIGNED. Owner: S7.5. The second step of an MoE combine. Token `t` of
+rank `s` becomes the sum of what the ranks returned for it, added in the order
+`order s t`. The order names the ranks to add: those in `dest s t`. No weight
+is applied here; a returned row already carries its weight. -/
+noncomputable def moeCombine {numRanks numTokens : Nat} {ι : Type}
+    (order : Fin numRanks → Fin numTokens → ReduceOrder (Fin numRanks))
+    (back : Fin numRanks → RankTensor numRanks (Fin numTokens × ι)) :
+    RankTensor numRanks (Fin numTokens × ι) :=
+  fun s i => (order s i.1).eval fun d => back s d i
 
 /-- UNSIGNED. Owner: S7.5. With identity experts, combine after dispatch gives
-each token times its weights, added in the order of the combine. -/
-theorem moeCombine_of_moeDispatch {numRanks numTokens numCopies : Nat} {ι : Type}
-    (R : MoERouting numRanks numTokens numCopies)
-    (weight : Fin numRanks → Fin numTokens → Fin numCopies → ℝ)
-    (order : Fin numRanks → Fin numTokens → ReduceOrder (Fin numCopies))
-    (tokens : RankTensor numRanks (Fin numTokens × ι)) (recv : RankTensor numRanks (Nat × ι))
-    (h : MoEDispatch R tokens recv) :
-    moeCombine R weight order recv =
-      fun s i => (order s i.1).eval fun k => weight s i.1 k * tokens s i := sorry
+each token times its weights, added in the order of the combine, for every row
+assignment of the dispatch. An identity expert returns a received row times
+the weight of its token on that rank (`hexpert`). The order adds only ranks
+that the token is sent to (`horder`). -/
+theorem moeCombine_of_moeDispatch {numRanks numTokens : Nat} {ι : Type}
+    (R : MoERouting numRanks numTokens) (rows : MoERows numRanks numTokens)
+    (order : Fin numRanks → Fin numTokens → ReduceOrder (Fin numRanks))
+    (tokens : RankTensor numRanks (Fin numTokens × ι))
+    (recv results : RankTensor numRanks (Nat × ι))
+    (back : Fin numRanks → RankTensor numRanks (Fin numTokens × ι))
+    (hdispatch : MoEDispatch R rows tokens recv)
+    (hexpert : ∀ d p s t, rows d p = some (s, t) → ∀ j,
+      results d (p, j) = R.weight s t d * recv d (p, j))
+    (hback : MoEStoreBack rows results back)
+    (horder : ∀ s t, ∀ d ∈ (order s t).leaves, d ∈ R.dest s t) :
+    moeCombine order back =
+      fun s i => (order s i.1).eval fun d => R.weight s i.1 d * tokens s i := sorry
 
 /-- UNSIGNED. Owner: S7.5. The attention result of one query row over one
 chunk of keys: `weight` is the softmax denominator, the sum of the
