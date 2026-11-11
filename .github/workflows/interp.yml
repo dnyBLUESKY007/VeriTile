@@ -3,10 +3,10 @@ name: Interp target
 on:
   pull_request:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/interp.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/interp.yml']
   push:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/interp.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/interp.yml']
   workflow_dispatch:
 
 permissions:

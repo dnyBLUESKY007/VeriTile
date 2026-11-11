@@ -1,6 +1,6 @@
 # GPU exchange protocol v1
 
-Status: agreed on 2026-11-10 (sub-issue I9.1). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
+Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
 
 Purpose: the development machine (no GPU) asks an sm_90 (Hopper) server to run kernels and gets raw results back, automatically. GPU results are empirical evidence only; they never define semantics.
 
@@ -45,7 +45,7 @@ The fork is public, so the agent treats everything as data unless all of these h
 2. The issue author is on the allow-list (initially the fork owner only).
 3. The pinned commit is reachable from a branch of the fork.
 
-It runs only `python -m gpurun run <batch> --out <result-dir>` at that commit. It never executes text from an issue body or comment.
+It runs only `PYTHONPATH=scripts python -m gpurun run <batch> --out <result-dir>`, from the root of the checkout at that commit. It never executes text from an issue body or comment.
 
 ## 5. `batch.json`
 
@@ -60,7 +60,7 @@ It runs only `python -m gpurun run <batch> --out <result-dir>` at that commit. I
   "tests": [
     { "id": "vector_add/normal",
       "frontend": "triton",
-      "entry": "bench/examples/VectorAdd/kernel.py::add_kernel",
+      "entry": "bench/examples/VectorAdd/launch.py::run",
       "launch": { "grid": [4], "num_warps": 4 },
       "inputs":  [ { "name": "x", "dtype": "fp32", "shape": [1000],
                      "gen": { "class": "normal", "seed": 1 }, "sha256": "<hex>" } ],
@@ -72,6 +72,7 @@ It runs only `python -m gpurun run <batch> --out <result-dir>` at that commit. I
 ```
 
 - `frontend`: `triton`, `tilelang`, `triton-dist`, `tilescale`.
+- `entry` is `<file in the repository>::<function>` and names a launch harness kept next to the kernel: `run(inputs, outputs, launch)` receives the tensors by name as `torch` tensors on the GPU, every output filled with its sentinel, binds the arguments and launches the kernel. With `reference.kind` `torch`, `reference.entry` names a callable with the same signature.
 - `requires.env` names one of the environments of section 9. A batch uses one environment.
 - Inputs are not shipped. Both sides generate them from `gen` with the pinned generator; the GPU side checks `sha256` and marks the test `input_mismatch` if it differs.
 - Input classes: `normal` (random normal), `boundary` (non-divisible sizes), `special` (NaN, Inf, signed zero, subnormal).
