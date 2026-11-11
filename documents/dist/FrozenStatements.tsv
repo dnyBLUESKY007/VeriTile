@@ -8,3 +8,20 @@
 statement	module	sha256	signed
 VeriTile.Interp.interp_eq_structural_exec	VeriTile.Staging.Interp.Adequacy	17e5f6bbc4953b93ccd8b7225291b75002eeb7ce4ca7e1cb639aeecf6e61eee5	2026-11-11, I0.1 (#103), recorded by the agent on the user's delegation
 VeriTile.Interp.bridge_exec	VeriTile.Staging.Interp.Bridge	f83f60f281360fe7ceac04258f113dc3eb5a5a1c496665cff678fbc6f5fe7e3b	2026-11-11, I0.1 (#103), recorded by the agent on the user's delegation
+VeriTile.Dist.Space.live_of_lifetime_kernel	VeriTile.Staging.Dist.LocationSpec	114f5115db01b6c27900c279d12b12a0c61d3c212e1976bfd96160a42d3d6c86	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.Space.not_live_of_cta_ended	VeriTile.Staging.Dist.LocationSpec	45fdf4c8021fc302dfac7d05a8c2c88ecc0b66f0e841759bcac904feeee0dd0c	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.Space.not_live_local_of_thread_ended	VeriTile.Staging.Dist.LocationSpec	139de0faa4990fd78ba6024dc3c2b5a11d964fe52485c996d72768429e453772	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.Scope.covers_mono	VeriTile.Staging.Dist.LocationSpec	19df10b342d481e161bd138b298aec164e8df42b91b6a9098d55ab7be58f8c21	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.Scope.covers_ne_rank_eq_sys	VeriTile.Staging.Dist.LocationSpec	d0c9ca896c6c396c06b89f796d608b1ad88b63405811628d48b15d5abe345284	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_global	VeriTile.Staging.Dist.LocationSpec	f9c187f0692508d7ddae8c7e7d81c30140ff7f8b895b20b4d4f6c36b5af25ae5	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_shared_iff	VeriTile.Staging.Dist.LocationSpec	73cba41d9915875863eaca8980c8fe2929ebbf80b3a9598823efe1e6763cfcd0	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_fragment_iff	VeriTile.Staging.Dist.LocationSpec	5ceee6ff39a200547b7f9d81c1ec5e94a3b863f3d28fc2e27772d9cdf86be62a	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_local_iff	VeriTile.Staging.Dist.LocationSpec	63b3d202ba5d456de70c5eda12400bc278737ad2f94d3cabcc440d817fa34605	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_barrier_iff	VeriTile.Staging.Dist.LocationSpec	97d42c5e05c32f216ac5029526810ed1c6a3f45f791cd306503fdb36e063ace5	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessible_tmem_iff	VeriTile.Staging.Dist.LocationSpec	92248797f69a1b6db3745dfe826cbce49bf35e875ba60b863aedd8cce8a4167f	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.not_accessibleAt_of_remote_not_symm	VeriTile.Staging.Dist.LocationSpec	abc3747b51c153f3a6ab20e4416ea9a9a9b879a51959de8802f126fe37711545	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.accessibleAt_of_symmAt	VeriTile.Staging.Dist.LocationSpec	bbe1f6c83fe4a8759132705815f6123e07118672acab3185a67579d8ab749d75	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.symmAt_self	VeriTile.Staging.Dist.LocationSpec	b7e0b00425afaccc424498776c8aaa8444d097e22aaade55b7c5a364b5359f29	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.symmAt_symmAt	VeriTile.Staging.Dist.LocationSpec	d001f164317faaaf6c0b58c38273216182834f6345bf46bdf02aa6f1fd2b3a24	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.symmAt_eq_some_iff	VeriTile.Staging.Dist.LocationSpec	1a2bcee8b5fceae00393718b17bd71c7323ecfe419b4e7c1160e1c9ee9bc7694	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
+VeriTile.Dist.ThreadGuard.existsUnique_runs_tidEq	VeriTile.Staging.Dist.LocationSpec	039fdde5a1318a0928c2c95a77f5ce9d760506e32500bf67fd7fb0bdaa0df41a	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
