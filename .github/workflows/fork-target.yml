@@ -1,0 +1,39 @@
+name: Fork target gate
+
+# Shared steps of the Dist, TileLang, Interp and Equiv shards.
+on:
+  workflow_call:
+    inputs:
+      library:
+        description: Lake library of the main target, for example VeriTileDist
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Build, audit and replay ${{ inputs.library }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+          build-args: ${{ inputs.library }}
+          test: false
+          lint: false
+          use-mathlib-cache: auto
+      - uses: ./.github/actions/setup-comparator
+      - name: Reject sorry, staging imports and new axioms, then replay the proofs
+        env:
+          LIBRARY: ${{ inputs.library }}
+        run: python3 scripts/check_fork_target.py "$LIBRARY" --replay
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.library }}-proof-replay
+          path: Logs/comparator-check-*/
+          if-no-files-found: ignore

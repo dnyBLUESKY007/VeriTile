@@ -1,0 +1,8 @@
+# Signed statements of the fork targets and their fingerprints.
+# Checked by scripts/check_frozen_statements.py; see VeriTile/Staging/README.md.
+#
+# statement: fully qualified declaration name
+# module:    Lean module that currently declares it (staging, later its main target)
+# sha256:    fingerprint of the elaborated statement; write - and run --fill at sign-off
+# signed:    date and ticket of the sign-off
+statement	module	sha256	signed
