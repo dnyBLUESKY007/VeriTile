@@ -1,0 +1,15 @@
+{
+  "inputs": {
+    "x": {
+      "expected_sha256": "c2041d1e159186180830e4c10ab43e34585c313d69d6aecb9714ad0c94a02b35",
+      "match": true,
+      "sha256": "c2041d1e159186180830e4c10ab43e34585c313d69d6aecb9714ad0c94a02b35"
+    }
+  },
+  "outputs": {
+    "out/out.tensor": "611c364020a102fae666c2e0c9d5bf2153983c3b527b095c80d75318386b0481"
+  },
+  "repeats": 1,
+  "status": "ok",
+  "wall_time_s": 3.57
+}

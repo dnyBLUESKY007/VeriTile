@@ -1,0 +1,21 @@
+{
+  "batch_id": "smoke-triton-001",
+  "env_mismatch": [],
+  "finished": "2026-11-11T16:01:00Z",
+  "limits_exceeded": [],
+  "mode": "compare",
+  "protocol": 1,
+  "request_commit": "cc49c2ad1dac87742b15c02ca4b5d16788a1f8fe",
+  "started": "2026-11-11T16:00:25Z",
+  "tests": {
+    "adapter/copy_bf16": "ok",
+    "adapter/copy_fp16": "ok",
+    "adapter/copy_fp32": "ok",
+    "adapter/copy_fp64": "ok",
+    "adapter/copy_int32": "ok",
+    "adapter/copy_int64": "ok",
+    "adapter/copy_uint8": "ok",
+    "adapter/half_write_fp32": "ok",
+    "triton/vector_add": "ok"
+  }
+}
