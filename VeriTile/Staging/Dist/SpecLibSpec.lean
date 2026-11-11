@@ -2,7 +2,8 @@
 VeriTile.Staging.Dist.SpecLibSpec
 
 Interface and statements of the specification library, frozen by ticket S7.1.
-UNSIGNED.
+Signed on 2026-11-11: `allGather_apply` and `allReduce_eq_of_leaves_perm` with the
+definitions under them. Everything else is UNSIGNED.
 
 The library states what a collective computes, as a mathematical function or
 relation over one tensor per rank. It is independent of any front end and of
@@ -80,11 +81,11 @@ open VeriTile.Triton
 
 /-! ## Rank-indexed tensors and reduction orders -/
 
-/-- UNSIGNED. Owner: S7.2. One real tensor per rank: `x r i` is the element at
+/-- Owner: S7.2. One real tensor per rank: `x r i` is the element at
 index `i` of the tensor of rank `r`. -/
 abbrev RankTensor (numRanks : Nat) (ι : Type) : Type := Fin numRanks → ι → ℝ
 
-/-- UNSIGNED. Owner: S7.2. The order of a sum over operands named by `ι`:
+/-- Owner: S7.2. The order of a sum over operands named by `ι`:
 `zero` is the empty sum, `input i` is operand `i`, `add l r` adds the value of
 `l` and the value of `r`. -/
 inductive ReduceOrder (ι : Type) where
@@ -92,14 +93,14 @@ inductive ReduceOrder (ι : Type) where
   | input : ι → ReduceOrder ι
   | add : ReduceOrder ι → ReduceOrder ι → ReduceOrder ι
 
-/-- UNSIGNED. Owner: S7.2. The value of a sum in the given order, with `f i`
+/-- Owner: S7.2. The value of a sum in the given order, with `f i`
 as operand `i`, in any carrier `α` that has a zero and an addition. -/
 def ReduceOrder.eval {ι α : Type} [Zero α] [Add α] (f : ι → α) : ReduceOrder ι → α
   | .zero => 0
   | .input i => f i
   | .add l r => l.eval f + r.eval f
 
-/-- UNSIGNED. Owner: S7.2. The operands of an order, from left to right, each
+/-- Owner: S7.2. The operands of an order, from left to right, each
 as often as it occurs. -/
 def ReduceOrder.leaves {ι : Type} : ReduceOrder ι → List ι
   | .zero => []
@@ -113,7 +114,7 @@ def ReduceOrder.ofList {ι : Type} (operands : List ι) : ReduceOrder ι :=
 
 /-! ## Allgather and reduce-scatter (S7.2) -/
 
-/-- UNSIGNED. Owner: S7.2. Each rank holds a chunk of `n` rows. Afterwards
+/-- Owner: S7.2. Each rank holds a chunk of `n` rows. Afterwards
 every rank holds all chunks in rank order. -/
 def allGather {numRanks n : Nat} {ι : Type} (x : RankTensor numRanks (Fin n × ι)) :
     RankTensor numRanks (Fin (numRanks * n) × ι) :=
@@ -152,7 +153,7 @@ noncomputable def gemmReduceScatter {numRanks m K N : Nat}
     RankTensor numRanks (TileIndex [m, N]) :=
   reduceScatter order fun q => gemm (A q) (B q)
 
-/-- UNSIGNED. Owner: S7.2. On every rank, row `q * n + i` of the allgather
+/-- Owner: S7.2. On every rank, row `q * n + i` of the allgather
 result is row `i` of the chunk of rank `q`. -/
 theorem allGather_apply {numRanks n : Nat} {ι : Type} (x : RankTensor numRanks (Fin n × ι))
     (r q : Fin numRanks) (i : Fin n) (j : ι) :
@@ -160,7 +161,7 @@ theorem allGather_apply {numRanks n : Nat} {ι : Type} (x : RankTensor numRanks 
 
 /-! ## Allreduce (S7.3) -/
 
-/-- UNSIGNED. Owner: S7.3. Every rank holds a tensor. Afterwards rank `r`
+/-- Owner: S7.3. Every rank holds a tensor. Afterwards rank `r`
 holds the sum over ranks; its element at index `i` is added in the order
 `order r i`. -/
 noncomputable def allReduce {numRanks : Nat} {ι : Type}
@@ -168,7 +169,7 @@ noncomputable def allReduce {numRanks : Nat} {ι : Type}
     RankTensor numRanks ι :=
   fun r i => (order r i).eval fun q => x q i
 
-/-- UNSIGNED. Owner: S7.3. Two orders that add the same operands equally often
+/-- Owner: S7.3. Two orders that add the same operands equally often
 give the same allreduce result over `ℝ`. -/
 theorem allReduce_eq_of_leaves_perm {numRanks : Nat} {ι : Type}
     (order₁ order₂ : Fin numRanks → ι → ReduceOrder (Fin numRanks))
