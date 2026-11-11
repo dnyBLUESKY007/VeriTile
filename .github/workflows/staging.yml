@@ -3,10 +3,10 @@ name: Staging target and frozen statements
 on:
   pull_request:
     branches: [main]
-    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/workflows/staging.yml']
+    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/workflows/staging.yml']
   push:
     branches: [main]
-    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/workflows/staging.yml']
+    paths: ['VeriTile/**', 'documents/dist/FrozenStatements.tsv', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/workflows/staging.yml']
   workflow_dispatch:
 
 permissions:
