@@ -1,0 +1,13 @@
+{
+  "protocol": 1,
+  "batch_id": "env-check-tilescale-001",
+  "mode": "env-check",
+  "supersedes": null,
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "tilescale"
+  },
+  "timeout_s": 600,
+  "tests": []
+}
