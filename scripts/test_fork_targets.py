@@ -49,24 +49,46 @@ class ForkTargetGates(unittest.TestCase):
         self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
         self.assertIn('AXIOM\tVeriTile/Dist/GateProbe.lean:veritileGateProbe', rejected.stderr)
 
-    def test_edited_frozen_statement_fails(self):
-        probe = self.probe('VeriTile/Staging/GateProbe.lean', SORRY)
+    def test_frozen_statement_and_its_definitions(self):
+        source = ('namespace VeriTileGateProbe\n'
+                  'def limit : Nat := 4\n'
+                  'def Small (n : Nat) : Prop := n < limit\n'
+                  'theorem bound (n : Nat) : Small n → n < 10 := sorry\n'
+                  'end VeriTileGateProbe\n')
+        probe = self.probe('VeriTile/Staging/GateProbe.lean', source)
         with tempfile.TemporaryDirectory() as temp:
-            tsv = Path(temp) / 'FrozenStatements.tsv'
+            tsv, definitions = Path(temp) / 'FrozenStatements.tsv', Path(temp) / 'FrozenDefinitions.tsv'
             tsv.write_text('statement\tmodule\tsha256\tsigned\n'
-                           'veritileGateProbe\tVeriTile.Staging.GateProbe\t-\ttest\n')
-            unfilled = run('check_frozen_statements.py', '--tsv', str(tsv))
-            self.assertNotEqual(unfilled.returncode, 0, unfilled.stdout)
-            filled = run('check_frozen_statements.py', '--tsv', str(tsv), '--fill')
-            self.assertEqual(filled.returncode, 0, filled.stderr)
-            # Renaming a bound variable or finishing the proof keeps the statement.
-            probe.write_text('theorem veritileGateProbe (m : Nat) : m + 0 = m := rfl\n')
-            same = run('check_frozen_statements.py', '--tsv', str(tsv))
+                           'VeriTileGateProbe.bound\tVeriTile.Staging.GateProbe\t-\ttest\n')
+
+            def check(*flags):
+                return run('check_frozen_statements.py', '--tsv', str(tsv), '--definitions', str(definitions), *flags)
+            self.assertNotEqual(check().returncode, 0)  # nothing recorded yet
+            self.assertEqual(check('--fill').returncode, 0)
+            self.assertEqual(sorted(line.split('\t')[0] for line in definitions.read_text().splitlines()[1:]),
+                             ['VeriTileGateProbe.Small', 'VeriTileGateProbe.limit'])
+            # Renaming a bound variable or finishing the proof changes neither fingerprint.
+            probe.write_text(source.replace('(n : Nat) : Small n → n < 10 := sorry',
+                                            '(m : Nat) : Small m → m < 10 := fun h => Nat.lt_trans h (by decide)'))
+            same = check()
             self.assertEqual(same.returncode, 0, same.stderr)
-            probe.write_text(SORRY.replace('n + 0 = n', '0 + n = n'))
-            changed = run('check_frozen_statements.py', '--tsv', str(tsv))
-            self.assertNotEqual(changed.returncode, 0, changed.stdout)
-            self.assertIn('veritileGateProbe: statement changed since sign-off', changed.stderr)
+            probe.write_text(source.replace('n < 10', 'n < 11'))
+            edited = check()
+            self.assertNotEqual(edited.returncode, 0, edited.stdout)
+            self.assertIn('VeriTileGateProbe.bound: statement changed since sign-off', edited.stderr)
+            # A definition used only inside another definition's body still changes the meaning.
+            probe.write_text(source.replace('limit : Nat := 4', 'limit : Nat := 400'))
+            redefined = check()
+            self.assertNotEqual(redefined.returncode, 0, redefined.stdout)
+            self.assertIn('VeriTileGateProbe.limit: definition changed since it was recorded; '
+                          'affects VeriTileGateProbe.bound', redefined.stderr)
+            self.assertNotIn('statement changed', redefined.stderr)
+            self.assertNotEqual(check('--fill').returncode, 0)  # --fill never replaces a fingerprint
+            before = definitions.read_text().splitlines()
+            self.assertEqual(check('--accept-definitions').returncode, 0)
+            after = definitions.read_text().splitlines()
+            self.assertEqual([a == b for a, b in zip(before, after)], [True, True, False])
+            self.assertEqual(check().returncode, 0)
 
 
 if __name__ == '__main__':

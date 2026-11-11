@@ -7,9 +7,10 @@ target `VeriTileStaging`, the only fork target in which `sorry` is allowed.
 
 - A freeze ticket puts its interface and statements here, under
   `VeriTile/Staging/{Dist,TileLang,Interp,Equiv}/`, with `sorry` in place of the proofs.
-- Declare each statement in its final namespace and under its final name. The
-  fingerprint of a statement depends on the declaration's name and its
-  elaborated type, so a stub and its later proof agree only if both match.
+- Declare each statement, and each definition it mentions, in its final
+  namespace and under its final name. Fingerprints are computed from names and
+  elaborated terms, so a stub and its later replacement are recognised as the
+  same declaration only if the name is kept.
 - A statement that the user has not signed yet says so in its docstring
   (`UNSIGNED`). A signed statement gets one row in
   [`documents/dist/FrozenStatements.tsv`](../../documents/dist/FrozenStatements.tsv).
@@ -35,17 +36,34 @@ Run the same gates locally from the repository root:
 python3 scripts/check_fork_target.py VeriTileDist            # build; no sorry, staging import or new axiom
 python3 scripts/check_fork_target.py VeriTileDist --replay   # also comparator and trust gates (Linux judge host)
 python3 scripts/check_fork_target.py VeriTileStaging         # build only
-python3 scripts/check_frozen_statements.py                   # signed statements keep their fingerprints
+python3 scripts/check_frozen_statements.py                   # signed statements and the definitions under them are unchanged
 python3 scripts/test_fork_targets.py                         # the gates reject deliberate violations
 ```
 
 ## Signing a statement
 
-Add a row `statement<TAB>module<TAB>-<TAB>date and ticket` to
-`FrozenStatements.tsv`, then run `python3 scripts/check_frozen_statements.py --fill`.
-`--fill` records fingerprints only for rows marked `-`. A recorded fingerprint
-changes only by editing the file by hand, which a reviewer sees in the diff.
+Add a row `statement<TAB>module<TAB>-<TAB>date, ticket and who signed` to
+`documents/dist/FrozenStatements.tsv`, then run
+`python3 scripts/check_frozen_statements.py --fill`. It records two things and
+never replaces a fingerprint that is already recorded:
 
-The fingerprint covers the elaborated statement up to the names of bound
-variables. It does not cover the bodies of the definitions the statement
-mentions; review those with `#auditStmt` from `VeriTile.Meta.StatementAudit`.
+- in `FrozenStatements.tsv`, the fingerprint of the elaborated statement, up to
+  the names of bound variables;
+- in `documents/dist/FrozenDefinitions.tsv`, one fingerprint for every constant
+  of this repository that the statement depends on: its kind, its type and,
+  for a definition, its body. The search follows types, definition bodies and
+  constructors, not proofs, and stops at Lean core and Mathlib.
+
+## When the check fails
+
+- **A statement changed.** A signed statement is edited only with a new
+  signature: restore it, or change its row by hand after the user signs again.
+- **A definition changed, appeared or is no longer needed.** The message names
+  the definition and the signed statements it affects. The statements read the
+  same but may no longer say the same thing. This is expected when a stub of a
+  freeze ticket gets its real definition and when an upstream merge changes
+  the semantics; it is a defect when a definition was bent to make a proof go
+  through. After review, run
+  `python3 scripts/check_frozen_statements.py --accept-definitions`; the diff
+  of `FrozenDefinitions.tsv` then lists exactly the definitions that were
+  accepted.
