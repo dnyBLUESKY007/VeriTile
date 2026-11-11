@@ -74,7 +74,7 @@ class TensorFile(unittest.TestCase):
         written = Tensor('fp32', (4,), buffer.data[:4] + struct.pack('<f', 2.5) + buffer.data[8:])
         self.assertEqual(tensorfile.written_mask(written), [False, True, False, False])
         self.assertEqual(tensorfile.filled('int16', (1,), '0x1234').data, b'\x34\x12')
-        for wrong in ('0x12', '1234', '0x12345'):
+        for wrong in ('0x12', '1234', '0x12345', '0x1_23', '0x12g4'):
             with self.subTest(wrong), self.assertRaises(TensorFormatError):
                 tensorfile.sentinel_bytes('int16', wrong)
         with self.assertRaises(TensorFormatError):

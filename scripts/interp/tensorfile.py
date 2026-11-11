@@ -109,7 +109,7 @@ def sentinel_bytes(dtype, sentinel=None):
     w = width(dtype)
     if text is None:
         raise TensorFormatError(f'{dtype} has no sentinel; use a wider shadow buffer')
-    if not text.startswith('0x') or len(text) != 2 + 2 * w:
+    if not text.startswith('0x') or len(text) != 2 + 2 * w or set(text[2:]) - set('0123456789abcdefABCDEF'):
         raise TensorFormatError(f'sentinel {text!r} is not 0x followed by {2 * w} hex digits')
     return int(text, 16).to_bytes(w, 'little')
 

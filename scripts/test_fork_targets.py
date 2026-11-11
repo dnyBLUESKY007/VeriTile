@@ -52,7 +52,8 @@ class ForkTargetGates(unittest.TestCase):
     def test_frozen_statement_and_its_definitions(self):
         source = ('namespace VeriTileGateProbe\n'
                   'def limit : Nat := 4\n'
-                  'def Small (n : Nat) : Prop := n < limit\n'
+                  'def stub : Nat := sorry\n'
+                  'def Small (n : Nat) : Prop := n < limit ∨ n < stub\n'
                   'theorem bound (n : Nat) : Small n → n < 10 := sorry\n'
                   'end VeriTileGateProbe\n')
         probe = self.probe('VeriTile/Staging/GateProbe.lean', source)
@@ -66,10 +67,14 @@ class ForkTargetGates(unittest.TestCase):
             self.assertNotEqual(check().returncode, 0)  # nothing recorded yet
             self.assertEqual(check('--fill').returncode, 0)
             self.assertEqual(sorted(line.split('\t')[0] for line in definitions.read_text().splitlines()[1:]),
-                             ['VeriTileGateProbe.Small', 'VeriTileGateProbe.limit'])
-            # Renaming a bound variable or finishing the proof changes neither fingerprint.
+                             ['VeriTileGateProbe.Small', 'VeriTileGateProbe.limit', 'VeriTileGateProbe.stub'])
+            # Moving a stub to another line changes the position tag of its `sorry`, not its fingerprint.
+            probe.write_text('\n\n' + source)
+            moved = check()
+            self.assertEqual(moved.returncode, 0, moved.stderr)
+            # Renaming a bound variable or rewriting the proof changes neither fingerprint.
             probe.write_text(source.replace('(n : Nat) : Small n → n < 10 := sorry',
-                                            '(m : Nat) : Small m → m < 10 := fun h => Nat.lt_trans h (by decide)'))
+                                            '(m : Nat) : Small m → m < 10 := sorry'))
             same = check()
             self.assertEqual(same.returncode, 0, same.stderr)
             probe.write_text(source.replace('n < 10', 'n < 11'))
@@ -87,7 +92,7 @@ class ForkTargetGates(unittest.TestCase):
             before = definitions.read_text().splitlines()
             self.assertEqual(check('--accept-definitions').returncode, 0)
             after = definitions.read_text().splitlines()
-            self.assertEqual([a == b for a, b in zip(before, after)], [True, True, False])
+            self.assertEqual([a == b for a, b in zip(before, after)], [True, True, False, True])
             self.assertEqual(check().returncode, 0)
 
 

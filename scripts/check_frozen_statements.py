@@ -46,7 +46,9 @@ private partial def frozenSer : Expr → String
   | .bvar i => s!"#{i}"
   | .sort l => s!"(S {l})"
   | .const n ls => s!"(C {n} {ls})"
-  | .app f a => s!"(A {frozenSer f} {frozenSer a})"
+  -- A `sorry` carries a tag made from its source position; the tag is not part of the meaning.
+  | e@(.app f a) =>
+    if e.getAppFn.isConstOf ``sorryAx then "(sorry)" else s!"(A {frozenSer f} {frozenSer a})"
   | .lam _ t b _ => s!"(L {frozenSer t} {frozenSer b})"
   | .forallE _ t b _ => s!"(P {frozenSer t} {frozenSer b})"
   | .letE _ t v b _ => s!"(Z {frozenSer t} {frozenSer v} {frozenSer b})"
