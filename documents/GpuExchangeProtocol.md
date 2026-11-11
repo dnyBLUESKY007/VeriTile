@@ -117,15 +117,16 @@ A polling loop (every 5 minutes while idle) lists open issues with `gpu:request`
 
 ## 9. Hardware and environments
 
-Hardware: one node with two H800 GPUs (sm_90). `compare`, `agree` and `timing` batches use one GPU; `dist` and `litmus` batches use both, with NVSHMEM. A test that needs two nodes is requested with `"requires": { "nodes": 2 }` and returns `skipped_env` on this node.
+Hardware: one node with H800 GPUs (sm_90), NVLink-connected in pairs. A request uses at most one pair: `compare`, `agree` and `timing` batches use one GPU; `dist` and `litmus` batches use two, with NVSHMEM and two local processes. `gpurun` selects the two visible GPUs and the process count explicitly; setting only `CUDA_VISIBLE_DEVICES` is not enough for the pinned launcher. A test that needs two nodes is requested with `"requires": { "nodes": 2 }` and returns `skipped_env` on this node. A program written for several nodes may still run on one node through a reduced path; such a run is reported as single-node coverage and never as an inter-node result (see the inter-node hardware ticket).
 
-"Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. The GPU side therefore keeps three named environments and reports every version in `env.json`:
+"Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. TileScale and TileLang both provide the `tilelang` import name and cannot be installed together. The GPU side therefore keeps four named environments and reports every version in `env.json`:
 
 | Environment | Contents | Pinned by the dev side |
 | --- | --- | --- |
 | `triton` | Python, PyTorch, Triton | Triton `3.5.1` |
-| `triton-dist` | Triton-distributed built from source with its bundled Triton, NVSHMEM, MPI launcher | Triton-distributed `7908e4e` |
-| `tilelang` | TileLang built from source; TileScale for distributed tests | TileLang `35850c0`, TileScale `71e7145` |
+| `triton-dist` | Triton-distributed built from source with its bundled Triton (a patched 3.7.1, not 3.5.1), NVSHMEM, MPI launcher | Triton-distributed `7908e4e` |
+| `tilelang` | TileLang built from source | TileLang `35850c0` |
+| `tilescale` | TileScale built from source | TileScale `71e7145` |
 
 Recorded but not pinned by the dev side: GPU driver, CUDA toolkit, Python, PyTorch, NVSHMEM and OS release. The first `env-check` batch reports them; from then on a change of any of them is a new `env.json` and is reported in the next result. A batch whose pinned version does not match returns `skipped_env`.
 
