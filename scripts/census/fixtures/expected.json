@@ -1,0 +1,761 @@
+[
+  {
+    "file": "triton_kernels.py",
+    "function": "leaky_relu",
+    "line": 8,
+    "kernel": true,
+    "decorators": [
+      "triton.jit"
+    ],
+    "statements": {
+      "Return": 1
+    },
+    "calls": [
+      {
+        "name": "triton.language.where",
+        "args": 3,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "triton_kernels.py",
+    "function": "row_softmax_kernel",
+    "line": 13,
+    "kernel": true,
+    "decorators": [
+      "triton.jit"
+    ],
+    "statements": {
+      "Assign": 6,
+      "Expr": 1,
+      "For": 1
+    },
+    "calls": [
+      {
+        "name": "float",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.arange",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.exp",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.load",
+        "args": 1,
+        "kwargs": [
+          "mask",
+          "other"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.max",
+        "args": 1,
+        "kwargs": [
+          "axis"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.num_programs",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.program_id",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.range",
+        "args": 3,
+        "kwargs": [
+          "num_stages"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.store",
+        "args": 2,
+        "kwargs": [
+          "mask"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.sum",
+        "args": 1,
+        "kwargs": [
+          "axis"
+        ],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "triton_kernels.py",
+    "function": "matvec_kernel",
+    "line": 26,
+    "kernel": true,
+    "decorators": [
+      "triton.jit"
+    ],
+    "statements": {
+      "Assign": 8,
+      "AugAssign": 1,
+      "Expr": 1,
+      "For": 1,
+      "If": 1
+    },
+    "calls": [
+      {
+        "name": ".to",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "leaky_relu",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "range",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.arange",
+        "args": 2,
+        "kwargs": [],
+        "count": 2
+      },
+      {
+        "name": "triton.language.cdiv",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.load",
+        "args": 1,
+        "kwargs": [
+          "mask",
+          "other"
+        ],
+        "count": 2
+      },
+      {
+        "name": "triton.language.program_id",
+        "args": 0,
+        "kwargs": [
+          "axis"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.store",
+        "args": 2,
+        "kwargs": [
+          "mask"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.sum",
+        "args": 1,
+        "kwargs": [
+          "axis"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.zeros",
+        "args": 1,
+        "kwargs": [
+          "dtype"
+        ],
+        "count": 1
+      }
+    ],
+    "helpers": [
+      "leaky_relu"
+    ]
+  },
+  {
+    "file": "triton_dist_kernels.py",
+    "function": "copy_block",
+    "line": 11,
+    "kernel": true,
+    "decorators": [
+      "triton.jit"
+    ],
+    "statements": {
+      "Expr": 1
+    },
+    "calls": [
+      {
+        "name": "triton.language.load",
+        "args": 1,
+        "kwargs": [
+          "mask"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton.language.store",
+        "args": 2,
+        "kwargs": [
+          "mask"
+        ],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "triton_dist_kernels.py",
+    "function": "ring_send_kernel",
+    "line": 16,
+    "kernel": true,
+    "decorators": [
+      "triton_dist.jit"
+    ],
+    "statements": {
+      "Assign": 3,
+      "Expr": 4,
+      "For": 1
+    },
+    "calls": [
+      {
+        "name": "copy_block",
+        "args": 4,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "range",
+        "args": 3,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.arange",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.num_programs",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.program_id",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.language_extra.__syncthreads",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.libshmem_device.fence",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.notify",
+        "args": 2,
+        "kwargs": [
+          "comm_scope",
+          "sig_op",
+          "signal"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.symm_at",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": [
+      "copy_block"
+    ]
+  },
+  {
+    "file": "triton_dist_kernels.py",
+    "function": "ring_receive_kernel",
+    "line": 29,
+    "kernel": true,
+    "decorators": [
+      "triton_dist.jit"
+    ],
+    "statements": {
+      "Assign": 4,
+      "Expr": 1,
+      "For": 1
+    },
+    "calls": [
+      {
+        "name": "copy_block",
+        "args": 4,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "range",
+        "args": 3,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.arange",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.num_programs",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton.language.program_id",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.consume_token",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.wait",
+        "args": 4,
+        "kwargs": [
+          "waitValue"
+        ],
+        "count": 1
+      }
+    ],
+    "helpers": [
+      "copy_block"
+    ]
+  },
+  {
+    "file": "triton_dist_kernels.py",
+    "function": "push_segment_kernel",
+    "line": 39,
+    "kernel": true,
+    "decorators": [
+      "triton_dist.jit"
+    ],
+    "statements": {
+      "Assign": 4,
+      "Expr": 3,
+      "If": 2
+    },
+    "calls": [
+      {
+        "name": "triton.language.program_id",
+        "args": 0,
+        "kwargs": [
+          "axis"
+        ],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.language_extra.__syncthreads",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.language_extra.tid",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.libshmem_device.putmem_signal_block",
+        "args": 7,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.extra.libshmem_device.signal_wait_until",
+        "args": 3,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "triton_dist.language.num_ranks",
+        "args": 0,
+        "kwargs": [],
+        "count": 2
+      },
+      {
+        "name": "triton_dist.language.rank",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "tilelang_kernels.py",
+    "function": "clamped_matmul.clamp",
+    "line": 11,
+    "kernel": false,
+    "decorators": [
+      "tilelang.language.macro"
+    ],
+    "statements": {
+      "Assign": 1,
+      "For": 1
+    },
+    "calls": [
+      {
+        "name": "tilelang.language.Parallel",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.max",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "tilelang_kernels.py",
+    "function": "clamped_matmul.main",
+    "line": 16,
+    "kernel": true,
+    "decorators": [
+      "tilelang.language.prim_func"
+    ],
+    "statements": {
+      "Assign": 3,
+      "Expr": 6,
+      "For": 1,
+      "With": 1
+    },
+    "calls": [
+      {
+        "name": "clamped_matmul.clamp",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Kernel",
+        "args": 2,
+        "kwargs": [
+          "threads"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Pipelined",
+        "args": 1,
+        "kwargs": [
+          "num_stages"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Tensor",
+        "args": 2,
+        "kwargs": [],
+        "count": 3
+      },
+      {
+        "name": "tilelang.language.alloc_fragment",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.alloc_shared",
+        "args": 2,
+        "kwargs": [],
+        "count": 2
+      },
+      {
+        "name": "tilelang.language.ceildiv",
+        "args": 2,
+        "kwargs": [],
+        "count": 3
+      },
+      {
+        "name": "tilelang.language.clear",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.copy",
+        "args": 2,
+        "kwargs": [],
+        "count": 3
+      },
+      {
+        "name": "tilelang.language.gemm",
+        "args": 3,
+        "kwargs": [
+          "policy"
+        ],
+        "count": 1
+      }
+    ],
+    "helpers": [
+      "clamped_matmul.clamp"
+    ]
+  },
+  {
+    "file": "tilelang_kernels.py",
+    "function": "row_sums",
+    "line": 37,
+    "kernel": true,
+    "decorators": [
+      "tilelang.jit"
+    ],
+    "statements": {
+      "AnnAssign": 1,
+      "Assign": 7,
+      "Expr": 2,
+      "For": 3,
+      "Return": 1,
+      "With": 1
+    },
+    "calls": [
+      {
+        "name": "range",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Kernel",
+        "args": 1,
+        "kwargs": [
+          "threads"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Parallel",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Tensor",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.alloc_fragment",
+        "args": 2,
+        "kwargs": [],
+        "count": 2
+      },
+      {
+        "name": "tilelang.language.ceildiv",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.const",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.empty",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.fill",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.if_then_else",
+        "args": 3,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.reduce_sum",
+        "args": 2,
+        "kwargs": [
+          "clear",
+          "dim"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.serial",
+        "args": 1,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  },
+  {
+    "file": "tilelang_kernels.py",
+    "function": "gather_rows_kernel.main",
+    "line": 60,
+    "kernel": true,
+    "decorators": [
+      "tilelang.language.prim_func"
+    ],
+    "statements": {
+      "Assign": 4,
+      "Expr": 6,
+      "For": 1,
+      "If": 1,
+      "With": 1
+    },
+    "calls": [
+      {
+        "name": "tilelang.language.Kernel",
+        "args": 2,
+        "kwargs": [
+          "threads"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Pipelined",
+        "args": 1,
+        "kwargs": [
+          "num_stages"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.Tensor",
+        "args": 2,
+        "kwargs": [],
+        "count": 4
+      },
+      {
+        "name": "tilelang.language.address_of",
+        "args": 1,
+        "kwargs": [],
+        "count": 2
+      },
+      {
+        "name": "tilelang.language.alloc_fragment",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.alloc_shared",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.ceildiv",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.copy",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.fill",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.get_rank",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.put_block",
+        "args": 0,
+        "kwargs": [
+          "dst",
+          "dst_pe",
+          "size",
+          "src"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.reduce_sum",
+        "args": 2,
+        "kwargs": [
+          "clear",
+          "dim"
+        ],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.sync_threads",
+        "args": 0,
+        "kwargs": [],
+        "count": 1
+      },
+      {
+        "name": "tilelang.language.wait_eq",
+        "args": 2,
+        "kwargs": [],
+        "count": 1
+      }
+    ],
+    "helpers": []
+  }
+]
