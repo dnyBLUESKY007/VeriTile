@@ -1,0 +1,37 @@
+name: Interp and gpurun self-tests
+
+# Pure Python, no Lean build. The golden hashes in the tests make every run a
+# check that generated inputs have the same bytes on another machine.
+on:
+  pull_request:
+    branches: [main]
+    paths: ['scripts/interp/**', 'scripts/gpurun/**', '.github/workflows/fork-python.yml']
+  push:
+    branches: [main]
+    paths: ['scripts/interp/**', 'scripts/gpurun/**', '.github/workflows/fork-python.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-tests:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run the self-tests of each package that exists
+        run: |
+          for package in interp gpurun; do
+            if [ -d "scripts/$package" ]; then
+              python -B -m unittest discover -s "scripts/$package" -p 'test_*.py'
+            fi
+          done
