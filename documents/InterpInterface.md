@@ -1,6 +1,7 @@
 # Interpreter interface
 
-Status: draft of ticket I0.1, **not signed**. The Lean side lives in
+Status: frozen by ticket I0.1 and signed on 2026-11-11; the fingerprints are in
+`documents/dist/FrozenStatements.tsv`. The Lean side lives in
 `VeriTile/Staging/Interp/`; nothing here is a proved result yet.
 
 The interpreter line builds one executable definition of kernel execution and
