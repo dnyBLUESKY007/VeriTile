@@ -1,0 +1,11 @@
+{
+  "batch_id": "env-check-triton-001",
+  "env_mismatch": [],
+  "finished": "2026-11-11T15:19:11Z",
+  "limits_exceeded": [],
+  "mode": "env-check",
+  "protocol": 1,
+  "request_commit": "cb5dda121c85356948476a1ebe5c4c00b59b131e",
+  "started": "2026-11-11T15:19:11Z",
+  "tests": {}
+}
