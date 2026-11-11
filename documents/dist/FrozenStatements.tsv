@@ -4,5 +4,7 @@
 # statement: fully qualified declaration name
 # module:    Lean module that currently declares it (staging, later its main target)
 # sha256:    fingerprint of the elaborated statement; write - and run --fill at sign-off
-# signed:    date and ticket of the sign-off
+# signed:    date, ticket and who signed
 statement	module	sha256	signed
+VeriTile.Interp.interp_eq_structural_exec	VeriTile.Staging.Interp.Adequacy	17e5f6bbc4953b93ccd8b7225291b75002eeb7ce4ca7e1cb639aeecf6e61eee5	2026-11-11, I0.1 (#103), recorded by the agent on the user's delegation
+VeriTile.Interp.bridge_exec	VeriTile.Staging.Interp.Bridge	f83f60f281360fe7ceac04258f113dc3eb5a5a1c496665cff678fbc6f5fe7e3b	2026-11-11, I0.1 (#103), recorded by the agent on the user's delegation
