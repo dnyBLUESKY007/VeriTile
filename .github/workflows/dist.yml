@@ -3,10 +3,10 @@ name: Dist target
 on:
   pull_request:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/dist.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/dist.yml']
   push:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/dist.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/dist.yml']
   workflow_dispatch:
 
 permissions:

@@ -3,10 +3,10 @@ name: Equiv target
 on:
   pull_request:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
   push:
     branches: [main]
-    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
+    paths: ['VeriTile/**', 'lakefile.toml', 'lake-manifest.json', 'lean-toolchain', 'scripts/**', '!scripts/interp/**', '!scripts/gpurun/**', '!scripts/census/**', '.github/actions/setup-comparator/**', '.github/workflows/fork-target.yml', '.github/workflows/equiv.yml']
   workflow_dispatch:
 
 permissions:
