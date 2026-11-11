@@ -13,6 +13,8 @@ PINS = {
     'tilescale': ('tilelang', 'git71e7145', False),
 }
 MODULES = ('torch', 'triton', 'triton_dist', 'tilelang', 'nvshmem')
+# Distributions that carry a module's version under another name.
+DISTRIBUTIONS = {'nvshmem': ('nvidia-nvshmem-cu12', 'nvshmem4py-cu12')}
 
 
 def module_version(name):
@@ -23,7 +25,7 @@ def module_version(name):
             return str(version)
     except Exception:  # a broken install must not stop the report
         pass
-    for distribution in (name, name.replace('_', '-')):
+    for distribution in (name, name.replace('_', '-'), *DISTRIBUTIONS.get(name, ())):
         try:
             return importlib.metadata.version(distribution)
         except importlib.metadata.PackageNotFoundError:
