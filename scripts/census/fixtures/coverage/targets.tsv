@@ -1,0 +1,4 @@
+# Fixture manifest for test_triton_coverage.py.
+K-T	Triton	https://example.org/o/kernels	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	triton_kernels.py	a Triton file
+K-T	Triton-distributed	https://example.org/o/kernels	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	dist_kernels.py	a Triton-distributed file
+K-L	TileLang	https://example.org/o/kernels	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	missing.py	another front end: not read
