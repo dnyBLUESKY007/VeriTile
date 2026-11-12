@@ -1,0 +1,21 @@
+{
+  "inputs": {
+    "x": {
+      "expected_sha256": "3f305afa7ee22bd14cd6f71f3c260cc000e08aac02b46a188205954910853fb3",
+      "match": true,
+      "sha256": "3f305afa7ee22bd14cd6f71f3c260cc000e08aac02b46a188205954910853fb3"
+    },
+    "y": {
+      "expected_sha256": "4d9c6719b1b2c366bc1a168e96dd4990e827f0dee17dd9e2d068957b4de7ab9b",
+      "match": true,
+      "sha256": "4d9c6719b1b2c366bc1a168e96dd4990e827f0dee17dd9e2d068957b4de7ab9b"
+    }
+  },
+  "outputs": {
+    "out/out.tensor": "20848553288f933bdcdbae031fcfeea1c23d21351c5a7e648571e057f33c3237",
+    "ref/out.tensor": "20848553288f933bdcdbae031fcfeea1c23d21351c5a7e648571e057f33c3237"
+  },
+  "repeats": 1,
+  "status": "ok",
+  "wall_time_s": 2.97
+}
