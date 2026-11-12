@@ -25,6 +25,8 @@ not recorded yet. It never replaces a recorded fingerprint.
 `--accept-definitions` rewrites FrozenDefinitions.tsv to the current state:
 the reviewed, deliberate way to accept a definition that changed or was
 filled in after the freeze.
+Re-signing a statement whose definitions changed with it needs both flags in
+one run: each alone refuses while the other table still differs.
 """
 import argparse
 import hashlib
@@ -149,10 +151,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--tsv', type=Path, default=STATEMENTS)
     parser.add_argument('--definitions', type=Path, default=DEFINITIONS)
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--fill', action='store_true', help="record what is marked '-' or not recorded yet")
-    group.add_argument('--accept-definitions', action='store_true',
-                       help='rewrite the definitions table to the current state')
+    parser.add_argument('--fill', action='store_true', help="record what is marked '-' or not recorded yet")
+    parser.add_argument('--accept-definitions', action='store_true',
+                        help='rewrite the definitions table to the current state')
     args = parser.parse_args()
     lines, rows = read(args.tsv, STATEMENT_HEADER)
     definition_lines, definition_rows = read(args.definitions, DEFINITION_HEADER)
