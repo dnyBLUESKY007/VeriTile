@@ -1,0 +1,252 @@
+{
+  "protocol": 1,
+  "batch_id": "internode-logical-rs06-001",
+  "mode": "dist",
+  "supersedes": null,
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "triton-dist"
+  },
+  "timeout_s": 900,
+  "notes": [
+    "Tutorial 06 of Triton-distributed 7908e4ea (inter-node reduce-scatter): reduce_scatter_2d_op, unchanged, on a 512 x 128 bfloat16 matrix per rank, 2 ranks. one_node/* is the control under triton-dist; logical_nodes/* runs 2 logical nodes of 1 rank.",
+    "Expected, judged on the development side only (experiments/interp_gpu/internode_logical/judge.py): the first three tests ok, every rank returning its 256 rows of the sum of both inputs.",
+    "PREDICTED FAILURE, wanted as a result: logical_nodes/tutorial_context builds the context with the tutorial's own create_reduce_scater_2d_ctx, which indexes the tensors of the rank's node with the global rank (line 202 of the tutorial). Rank 1 is expected to end with \"IndexError: list index out of range\" before any kernel runs; rank 0 is then expected to wait for it until the 240 s timeout of that test. Status runtime_error or timeout is the expected outcome of that test, not a fault of the GPU side; a retry would end the same way.",
+    "*/harness_context builds the same context in the harness with that one index taken within the node.",
+    "Meant for an NVLink pair, as internode-logical-env-002 ran on: under logical nodes the tutorial's barrier uses atomic operations on the peer's memory without asking the driver whether the pair supports them."
+  ],
+  "tests": [
+    {
+      "id": "one_node/tutorial_context",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::reduce_scatter",
+      "launch": {
+        "context": "tutorial"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            2,
+            512,
+            128
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "barrier",
+          "dtype": "int32",
+          "shape": [
+            3
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "reduced",
+          "dtype": "bf16",
+          "shape": [
+            256,
+            128
+          ],
+          "sentinel": "0x7fcd"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    },
+    {
+      "id": "one_node/harness_context",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::reduce_scatter",
+      "launch": {
+        "context": "harness"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            2,
+            512,
+            128
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "barrier",
+          "dtype": "int32",
+          "shape": [
+            3
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "reduced",
+          "dtype": "bf16",
+          "shape": [
+            256,
+            128
+          ],
+          "sentinel": "0x7fcd"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    },
+    {
+      "id": "logical_nodes/harness_context",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::reduce_scatter",
+      "launch": {
+        "context": "harness"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            2,
+            512,
+            128
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "barrier",
+          "dtype": "int32",
+          "shape": [
+            3
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "reduced",
+          "dtype": "bf16",
+          "shape": [
+            256,
+            128
+          ],
+          "sentinel": "0x7fcd"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist-logical-nodes",
+      "logical_nodes": 2,
+      "repeats": 2
+    },
+    {
+      "id": "logical_nodes/tutorial_context",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::reduce_scatter",
+      "launch": {
+        "context": "tutorial"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            2,
+            512,
+            128
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "barrier",
+          "dtype": "int32",
+          "shape": [
+            3
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "reduced",
+          "dtype": "bf16",
+          "shape": [
+            256,
+            128
+          ],
+          "sentinel": "0x7fcd"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist-logical-nodes",
+      "logical_nodes": 2,
+      "repeats": 1,
+      "timeout_s": 240
+    }
+  ]
+}
