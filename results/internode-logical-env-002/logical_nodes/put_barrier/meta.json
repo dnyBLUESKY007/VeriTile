@@ -1,0 +1,57 @@
+{
+  "distinct": {
+    "rank0/received": {
+      "18ff671972a46949199c200428a0f20bf3c6d876e306c8a1744a4872038bb71f": 2
+    },
+    "rank0/topology": {
+      "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03": 2
+    },
+    "rank1/received": {
+      "5773336b7bdde7cbff9befdc70d271275f63ec09d157d53fc98ec9f7d13c1ddb": 2
+    },
+    "rank1/topology": {
+      "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944": 2
+    }
+  },
+  "inputs": {},
+  "launcher": "triton-dist-logical-nodes",
+  "local_ranks": 1,
+  "logical_nodes": 2,
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/received": "18ff671972a46949199c200428a0f20bf3c6d876e306c8a1744a4872038bb71f",
+        "rank0/topology": "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03",
+        "rank1/received": "5773336b7bdde7cbff9befdc70d271275f63ec09d157d53fc98ec9f7d13c1ddb",
+        "rank1/topology": "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 41.19
+    },
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/received": "18ff671972a46949199c200428a0f20bf3c6d876e306c8a1744a4872038bb71f",
+        "rank0/topology": "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03",
+        "rank1/received": "5773336b7bdde7cbff9befdc70d271275f63ec09d157d53fc98ec9f7d13c1ddb",
+        "rank1/topology": "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 37.229
+    }
+  ],
+  "status": "ok",
+  "topology": "logical-nodes",
+  "wall_time_s": 78.419
+}
