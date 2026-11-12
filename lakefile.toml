@@ -506,6 +506,7 @@ globs = [
   "tests.lean.UnsignedLoopBinding",
   "tests.lean.WelfordCallMetadata",
   "tests.lean.WelfordSourceContexts",
+  "tests.lean.InterpReflectSmoke",
 ]
 
 # Fork targets for the async and distributed line. Each main target has its own
