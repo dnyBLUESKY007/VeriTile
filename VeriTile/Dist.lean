@@ -8,3 +8,5 @@ Triton-distributed and TileScale kernels. Its modules live under
 
 This target contains no `sorry` and imports nothing from `VeriTile/Staging/`.
 -/
+import VeriTile.Dist.Space
+import VeriTile.Dist.Agent

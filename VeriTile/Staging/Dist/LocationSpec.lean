@@ -5,6 +5,12 @@ Location and agent model of the Dist line, frozen by ticket S1.1. Signed on
 2026-11-11, except `DistState`, its projections and its two statements, which stay
 unsigned until ticket S1.5 designs the multi-rank state.
 
+Tickets S1.2 and S1.3 moved their parts to the main target with proofs: ranks,
+CTAs, spaces, addresses and lifetimes are in `VeriTile/Dist/Space.lean`;
+agents and scopes are in `VeriTile/Dist/Agent.lean`. What stays here is
+accessibility (S1.4), the symmetric heap and the multi-rank state (S1.5) and
+thread guards (S1.6).
+
 Spaces tag the upstream `RegionName`; no `Stmt` or `Op` constructor is added.
 The data types and the small functions over them are real definitions.
 `DistState` and its projections are stubs. Each theorem is a statement with
@@ -34,167 +40,12 @@ Not stated here, because both need the execution semantics: that a rejected
 access is an execution failure, and that two threads storing to one address
 are a data race.
 -/
-import VeriTile.Triton.Semantics.State
+import VeriTile.Dist.Space
+import VeriTile.Dist.Agent
 
 namespace VeriTile.Dist
 
 open VeriTile.Triton (RegionName BlockState)
-
-/-! ## Ranks and CTAs (needed from S1.2 on) -/
-
-/-- A rank: one GPU of the launch. -/
-abbrev Rank := Nat
-
-/-- One program instance (one CUDA thread block) on one rank. `pid`
-lists its program id on each axis of the launch grid, outermost axis first. -/
-structure Cta where
-  rank : Rank
-  pid : List Nat
-  deriving DecidableEq, Repr
-
-/-! ## Spaces and lifetimes (S1.2) -/
-
-/-- The memory that holds a region. `global r` is device memory of
-rank `r`. `shared c`, `fragment c`, `barrier c` and `tmem c` belong to CTA `c`:
-its shared memory, its fragment tiles, its barrier objects and its tensor
-memory. `local c t` belongs to thread `t` of CTA `c`. -/
-inductive Space where
-  | global (r : Rank)
-  | shared (c : Cta)
-  | fragment (c : Cta)
-  | «local» (c : Cta) (t : Nat)
-  | barrier (c : Cta)
-  | tmem (c : Cta)
-  deriving DecidableEq, Repr
-
-/-- A cell of an upstream region, tagged with the space that holds
-it. Two addresses with different space tags are different cells. -/
-structure Addr where
-  space : Space
-  region : RegionName
-  offset : Nat
-  deriving DecidableEq
-
-/-- How long a space exists: for the whole kernel launch, for the
-run of one CTA, or for the run of one thread. -/
-inductive Lifetime where
-  | kernel
-  | cta
-  | thread
-  deriving DecidableEq, Repr
-
-/-- The lifetime of each space. -/
-def Space.lifetime : Space → Lifetime
-  | .global _ => .kernel
-  | .shared _ | .fragment _ | .barrier _ | .tmem _ => .cta
-  | .local _ _ => .thread
-
-/-- The CTA that a space belongs to; `none` for device memory. -/
-def Space.cta? : Space → Option Cta
-  | .global _ => none
-  | .shared c | .fragment c | .barrier c | .tmem c | .local c _ => some c
-
-/-- The space exists. `running c t` says that thread `t` of CTA `c`
-has started and has not returned. Device memory always exists; the memory of a
-CTA exists while one of its threads runs; the memory of a thread exists while
-that thread runs. The execution semantics rejects an access to a space that is
-not live. -/
-def Space.live (running : Cta → Nat → Prop) : Space → Prop
-  | .global _ => True
-  | .shared c | .fragment c | .barrier c | .tmem c => ∃ t, running c t
-  | .local c t => running c t
-
-/-- Proved by S1.2. A space with kernel lifetime is live whichever
-threads run. -/
-theorem Space.live_of_lifetime_kernel {running : Cta → Nat → Prop} {s : Space}
-    (h : s.lifetime = .kernel) : s.live running := sorry
-
-/-- Proved by S1.2. Once no thread of a CTA runs, none of its spaces
-is live: its shared memory, fragments, barriers, tensor memory and the local
-memory of its threads. -/
-theorem Space.not_live_of_cta_ended {running : Cta → Nat → Prop} {s : Space} {c : Cta}
-    (hs : s.cta? = some c) (hend : ∀ t, ¬ running c t) : ¬ s.live running := sorry
-
-/-- Proved by S1.2. The local memory of a thread that does not run
-is not live, even while other threads of its CTA run. -/
-theorem Space.not_live_local_of_thread_ended {running : Cta → Nat → Prop} {c : Cta} {t : Nat}
-    (hend : ¬ running c t) : ¬ (Space.local c t).live running := sorry
-
-/-! ## Agents and scopes (S1.3) -/
-
-/-- Who executes: a whole rank, one CTA, one role or warp group `g`
-of a CTA, or one thread. In `thread c g t`, `t` is the thread id within CTA `c`
-and `g` is the group the thread belongs to. -/
-inductive Agent where
-  | rank (r : Rank)
-  | cta (c : Cta)
-  | group (c : Cta) (g : Nat)
-  | thread (c : Cta) (g : Nat) (t : Nat)
-  deriving DecidableEq, Repr
-
-/-- The rank an agent runs on. -/
-def Agent.rankOf : Agent → Rank
-  | .rank r => r
-  | .cta c | .group c _ | .thread c _ _ => c.rank
-
-/-- The CTA an agent is or lies in; `none` for a whole rank. -/
-def Agent.cta? : Agent → Option Cta
-  | .rank _ => none
-  | .cta c | .group c _ | .thread c _ _ => some c
-
-/-- `a.within b`: `a` is `b` or lies inside `b` in the hierarchy
-rank → CTA → group → thread. -/
-def Agent.within : Agent → Agent → Prop
-  | a, .rank r => a.rankOf = r
-  | a, .cta c => a.cta? = some c
-  | .group c g, .group c' g' => c = c' ∧ g = g'
-  | .thread c g _, .group c' g' => c = c' ∧ g = g'
-  | _, .group _ _ => False
-  | a, .thread c g t => a = .thread c g t
-
-/-- `Agent.within` is decidable. -/
-instance Agent.within.decidable (a b : Agent) : Decidable (a.within b) := by
-  cases b <;> cases a <;> simp only [Agent.within] <;> infer_instance
-
-/-- The scope of a synchronizing operation: one CTA, one GPU, or the
-whole system. -/
-inductive Scope where
-  | cta
-  | gpu
-  | sys
-  deriving DecidableEq, Repr
-
-/-- Position of a scope in the order `cta < gpu < sys`. -/
-def Scope.level : Scope → Nat
-  | .cta => 0
-  | .gpu => 1
-  | .sys => 2
-
-/-- The order `cta < gpu < sys`. -/
-instance Scope.instLinearOrder : LinearOrder Scope :=
-  LinearOrder.lift' Scope.level (by intro s s'; cases s <;> cases s' <;> simp [Scope.level])
-
-/-- `s.covers a b`: one instance of scope `s` contains both agents.
-`cta` needs both in the same CTA, `gpu` needs both on the same rank, `sys`
-contains every pair. -/
-def Scope.covers : Scope → Agent → Agent → Prop
-  | .cta, a, b => a.cta? ≠ none ∧ a.cta? = b.cta?
-  | .gpu, a, b => a.rankOf = b.rankOf
-  | .sys, _, _ => True
-
-/-- `Scope.covers` is decidable. -/
-instance Scope.covers.decidable (s : Scope) (a b : Agent) : Decidable (s.covers a b) := by
-  cases s <;> simp only [Scope.covers] <;> infer_instance
-
-/-- Proved by S1.3. A wider scope covers every pair that a narrower
-scope covers. -/
-theorem Scope.covers_mono {s s' : Scope} {a b : Agent}
-    (h : s ≤ s') (hc : s.covers a b) : s'.covers a b := sorry
-
-/-- Proved by S1.3. Agents on different ranks are covered by `sys`
-only. -/
-theorem Scope.covers_ne_rank_eq_sys {s : Scope} {a b : Agent}
-    (hc : s.covers a b) (hr : a.rankOf ≠ b.rankOf) : s = .sys := sorry
 
 /-! ## Accessibility (S1.4) -/
 
