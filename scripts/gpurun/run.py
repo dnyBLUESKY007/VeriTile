@@ -14,10 +14,10 @@ import time
 import traceback
 
 from interp import gen_inputs, tensorfile
-from . import bundle, env as environment
+from . import bundle, dist, env as environment
 
 ROOT = Path(__file__).resolve().parents[2]
-MODES = ('env-check', 'compare')
+MODES = ('env-check', 'compare', 'dist')
 TORCH_FRONTENDS = ('triton', 'tilelang', 'triton-dist', 'tilescale')
 BATCH_WALL_S = 6 * 3600
 COMPILE_ERROR_EXIT = 3
@@ -37,6 +37,8 @@ def load_batch(batch_dir):
     for test in batch.get('tests', []):
         if not TEST_ID.fullmatch(test['id']) or '..' in test['id'].split('/'):
             raise ValueError(f"test id {test['id']!r} is not a safe relative path")
+    if batch['mode'] == 'dist':
+        dist.check_request(batch)
     return batch
 
 
@@ -48,27 +50,38 @@ def request_commit(root):
         return None
 
 
+def write_inputs(test, work):
+    """Generate the inputs of a test into `work`; return the sha256 check of each."""
+    checks = {}
+    for spec in test.get('inputs', []):
+        tensor = gen_inputs.generate(spec['dtype'], spec['shape'], spec['gen'])
+        match = tensor.sha256() == spec['sha256']
+        checks[spec['name']] = {'expected_sha256': spec['sha256'], 'sha256': tensor.sha256(), 'match': match}
+        (work / 'in').mkdir(exist_ok=True)
+        tensorfile.write(work / 'in' / (spec['name'] + '.tensor'), tensor)
+    return checks
+
+
+def child_env():
+    """The environment of a child process: this one, with `gpurun` importable."""
+    return dict(os.environ, PYTHONPATH=os.pathsep.join(
+        [str(Path(__file__).resolve().parents[1]), os.environ.get('PYTHONPATH', '')]).rstrip(os.pathsep))
+
+
 def run_test(test, timeout_s, test_dir, root):
     """Run one test in its own process; return its meta.json content."""
     meta = {'repeats': 1, 'inputs': {}, 'outputs': {}}
     with tempfile.TemporaryDirectory(prefix='gpurun-') as work:
         work = Path(work)
-        for spec in test.get('inputs', []):
-            tensor = gen_inputs.generate(spec['dtype'], spec['shape'], spec['gen'])
-            match = tensor.sha256() == spec['sha256']
-            meta['inputs'][spec['name']] = {'expected_sha256': spec['sha256'], 'sha256': tensor.sha256(), 'match': match}
-            (work / 'in').mkdir(exist_ok=True)
-            tensorfile.write(work / 'in' / (spec['name'] + '.tensor'), tensor)
+        meta['inputs'] = write_inputs(test, work)
         if not all(entry['match'] for entry in meta['inputs'].values()):
             return {**meta, 'status': 'input_mismatch'}
         (work / 'spec.json').write_text(json.dumps({'test': test, 'root': str(root)}))
-        child_env = dict(os.environ, PYTHONPATH=os.pathsep.join(
-            [str(Path(__file__).resolve().parents[1]), os.environ.get('PYTHONPATH', '')]).rstrip(os.pathsep))
         started = time.monotonic()
         with (work / 'stdout').open('wb') as out, (work / 'stderr').open('wb') as err:
             # Its own session, so a timeout also kills compilers and launchers it started.
             process = subprocess.Popen([sys.executable, '-m', 'gpurun', '_child', str(work)], cwd=root,
-                                       env=child_env, stdout=out, stderr=err, start_new_session=True)
+                                       env=child_env(), stdout=out, stderr=err, start_new_session=True)
             try:
                 code = process.wait(timeout=timeout_s)
             except subprocess.TimeoutExpired:
@@ -99,7 +112,8 @@ def run_batch(batch_dir, out_dir, env=None, root=ROOT):
     out_dir.mkdir(parents=True, exist_ok=True)
     env = environment.collect() if env is None else env
     bundle.write_json(out_dir / 'env.json', env)
-    reasons = environment.mismatches(batch.get('requires', {}), env)
+    requires = batch.get('requires', {})
+    reasons = environment.mismatches(requires, env)
     manifest = {'batch_id': batch['batch_id'], 'protocol': 1, 'mode': batch['mode'],
                 'request_commit': request_commit(root), 'started': now(), 'env_mismatch': reasons, 'tests': {}}
     deadline = time.monotonic() + BATCH_WALL_S
@@ -111,8 +125,12 @@ def run_batch(batch_dir, out_dir, env=None, root=ROOT):
         if reasons:
             meta = {'status': 'skipped_env', 'reasons': reasons}
         else:
+            timeout_s = test.get('timeout_s', batch.get('timeout_s', 600))
             try:
-                meta = run_test(test, test.get('timeout_s', batch.get('timeout_s', 600)), test_dir, root)
+                if batch['mode'] == 'dist':
+                    meta = dist.run_test(test, timeout_s, test_dir, root, env, requires.get('nodes', 1))
+                else:
+                    meta = run_test(test, timeout_s, test_dir, root)
             except Exception:  # one broken test must not stop the batch
                 meta = {'status': 'runtime_error', 'runner_error': bundle.scrub(traceback.format_exc(), root)}
         bundle.write_json(test_dir / 'meta.json', meta)
@@ -164,41 +182,55 @@ def from_torch(value, like):
     return tensorfile.Tensor(like.dtype, like.shape, value.detach().cpu().contiguous().view(carrier).numpy().tobytes())
 
 
+def read_spec(work):
+    """The test, the repository root and the input tensors handed to a child process."""
+    spec = json.loads((work / 'spec.json').read_text())
+    test = spec['test']
+    assert sys.byteorder == 'little', 'tensor files are little-endian'
+    if test['frontend'] not in TORCH_FRONTENDS and test['frontend'] != 'mock':
+        raise ValueError(f"unknown frontend {test['frontend']!r}")
+    inputs = {s['name']: tensorfile.read(work / 'in' / (s['name'] + '.tensor')) for s in test.get('inputs', [])}
+    return test, Path(spec['root']), inputs
+
+
+def call_entry(test, root, entry, inputs, out_dir, *leading):
+    """Call one entry on sentinel-filled outputs and write them to `out_dir`.
+
+    `leading` goes before `(inputs, outputs, launch)`: nothing in `compare`,
+    `(rank, ranks)` in `dist`.
+    """
+    blank = {s['name']: tensorfile.filled(s['dtype'], s['shape'], s.get('sentinel')) for s in test['outputs']}
+    function = load_entry(entry, root)
+    if test['frontend'] in TORCH_FRONTENDS:
+        import torch
+        outputs = {name: to_torch(t) for name, t in blank.items()}
+        function(*leading, {name: to_torch(t) for name, t in inputs.items()}, outputs, test.get('launch', {}))
+        torch.cuda.synchronize()
+        outputs = {name: from_torch(outputs[name], blank[name]) for name in blank}
+    else:  # CPU mock used by the self-test: the entry replaces entries of `outputs`
+        outputs = dict(blank)
+        function(*leading, dict(inputs), outputs, test.get('launch', {}))
+    out_dir.mkdir(parents=True)
+    for name, tensor in outputs.items():
+        if (tensor.dtype, tensor.shape) != (blank[name].dtype, blank[name].shape):
+            raise ValueError(f'output {name} changed dtype or shape')
+        tensorfile.write(out_dir / (name + '.tensor'), tensor)
+
+
 def child(work):
     """Run the kernel entry and, when asked, the torch reference of one test."""
     work = Path(work)
-    spec = json.loads((work / 'spec.json').read_text())
-    test, root = spec['test'], Path(spec['root'])
-    assert sys.byteorder == 'little', 'tensor files are little-endian'
-    use_torch = test['frontend'] in TORCH_FRONTENDS
-    if not use_torch and test['frontend'] != 'mock':
-        raise ValueError(f"unknown frontend {test['frontend']!r}")
-    inputs = {s['name']: tensorfile.read(work / 'in' / (s['name'] + '.tensor')) for s in test.get('inputs', [])}
+    test, root, inputs = read_spec(work)
     calls = [('out', test['entry'])]
     if test.get('reference', {}).get('kind') == 'torch':
         calls.append(('ref', test['reference']['entry']))
     for kind, entry in calls:
-        blank = {s['name']: tensorfile.filled(s['dtype'], s['shape'], s.get('sentinel')) for s in test['outputs']}
-        function = load_entry(entry, root)
-        if use_torch:
-            import torch
-            outputs = {name: to_torch(t) for name, t in blank.items()}
-            function({name: to_torch(t) for name, t in inputs.items()}, outputs, test.get('launch', {}))
-            torch.cuda.synchronize()
-            outputs = {name: from_torch(outputs[name], blank[name]) for name in blank}
-        else:  # CPU mock used by the self-test: the entry replaces entries of `outputs`
-            outputs = dict(blank)
-            function(dict(inputs), outputs, test.get('launch', {}))
-        (work / kind).mkdir()
-        for name, tensor in outputs.items():
-            if (tensor.dtype, tensor.shape) != (blank[name].dtype, blank[name].shape):
-                raise ValueError(f'output {name} changed dtype or shape')
-            tensorfile.write(work / kind / (name + '.tensor'), tensor)
+        call_entry(test, root, entry, inputs, work / kind)
 
 
-def child_main(work):
+def child_main(work, body=child):
     try:
-        child(work)
+        body(work)
     except BaseException as error:
         traceback.print_exc()
         kind = type(error)

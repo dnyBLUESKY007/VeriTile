@@ -1,0 +1,336 @@
+{
+  "protocol": 1,
+  "batch_id": "smoke-triton-002",
+  "mode": "compare",
+  "supersedes": "smoke-triton-001",
+  "requires": {
+    "sm": 90,
+    "gpus": 1,
+    "env": "triton"
+  },
+  "timeout_s": 600,
+  "tests": [
+    {
+      "id": "adapter/copy_fp32",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "fp32",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 100
+          },
+          "sha256": "759f9c8066f234885f95ca83375294801488634268871bf4d1dc1762e92e2ce5"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "fp32",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x7fc0dead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_fp16",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "fp16",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 101
+          },
+          "sha256": "2243f1e4582784c796213464d6676f96c015214ef2235bb24ad06f6d21f4d30a"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "fp16",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x7ead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_bf16",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "bf16",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 102
+          },
+          "sha256": "ad08cd44aefcca2ec0d5898b96e217e6a24d0b95b00079eeca710ab1a6f572d0"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "bf16",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x7fcd"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_fp64",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "fp64",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 103
+          },
+          "sha256": "1f58d09bfa83f1dda7d75a1ebb73103da7707d6e7205520715d719b0abb7a3a6"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "fp64",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x7ff8dead0000dead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_int32",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int32",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 104
+          },
+          "sha256": "8b9593503004b35c194c03f3f3bb36e065fe8366c7d03a95804e792e21ac494d"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "int32",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x80000000"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_int64",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int64",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 105
+          },
+          "sha256": "e269c48a6bdd7c3f22e579771721df2d8bdce36285f422358213b414f7736ef6"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "int64",
+          "shape": [
+            257
+          ],
+          "sentinel": "0x8000000000000000"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/copy_uint8",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::copy",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "uint8",
+          "shape": [
+            257
+          ],
+          "gen": {
+            "class": "special",
+            "seed": 106
+          },
+          "sha256": "c509a128b963ca4cc19ebd50b7f9f25fc3441a248657920fc1c4b99d21edab73"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "uint8",
+          "shape": [
+            257
+          ],
+          "sentinel": "0xad"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "adapter/half_write_fp32",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::half_write",
+      "launch": {},
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "fp32",
+          "shape": [
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 200
+          },
+          "sha256": "c2041d1e159186180830e4c10ab43e34585c313d69d6aecb9714ad0c94a02b35"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "fp32",
+          "shape": [
+            64
+          ],
+          "sentinel": "0x7fc0dead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "repeats": 1
+    },
+    {
+      "id": "triton/vector_add",
+      "frontend": "triton",
+      "entry": "experiments/interp_gpu/smoke/kernels.py::add",
+      "launch": {
+        "block": 256,
+        "num_warps": 4
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "fp32",
+          "shape": [
+            1000
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 300
+          },
+          "sha256": "3f305afa7ee22bd14cd6f71f3c260cc000e08aac02b46a188205954910853fb3"
+        },
+        {
+          "name": "y",
+          "dtype": "fp32",
+          "shape": [
+            1000
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 301
+          },
+          "sha256": "4d9c6719b1b2c366bc1a168e96dd4990e827f0dee17dd9e2d068957b4de7ab9b"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "dtype": "fp32",
+          "shape": [
+            1024
+          ],
+          "sentinel": "0x7fc0dead"
+        }
+      ],
+      "reference": {
+        "kind": "torch",
+        "entry": "experiments/interp_gpu/smoke/kernels.py::add_reference"
+      },
+      "repeats": 1
+    }
+  ]
+}

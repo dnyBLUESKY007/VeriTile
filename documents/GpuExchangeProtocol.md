@@ -1,6 +1,6 @@
 # GPU exchange protocol v1
 
-Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
+Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Amended on 2026-11-12 by sub-issue C-I3.1, not yet confirmed by the GPU side: `dist` mode (sections 5 and 6), the operator's node count, and two NVSHMEM versions in `env.json` (sections 6 and 9). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
 
 Purpose: the development machine (no GPU) asks an sm_90 (Hopper) server to run kernels and gets raw results back, automatically. GPU results are empirical evidence only; they never define semantics.
 
@@ -45,7 +45,7 @@ The fork is public, so the agent treats everything as data unless all of these h
 2. The issue author is on the allow-list (initially the fork owner only).
 3. The pinned commit is reachable from a branch of the fork.
 
-It runs only `PYTHONPATH=scripts python -m gpurun run <batch> --out <result-dir>`, from the root of the checkout at that commit. It never executes text from an issue body or comment.
+It runs only `PYTHONPATH=scripts python -m gpurun run <batch> --out <result-dir>`, from the root of the checkout at that commit. It never executes text from an issue body or comment. The operator's settings reach `gpurun` only through the environment: `CUDA_VISIBLE_DEVICES`, `GPURUN_NODES` and `GPURUN_HOSTS` (section 9).
 
 ## 5. `batch.json`
 
@@ -74,9 +74,11 @@ It runs only `PYTHONPATH=scripts python -m gpurun run <batch> --out <result-dir>
 - `frontend`: `triton`, `tilelang`, `triton-dist`, `tilescale`.
 - `entry` is `<file in the repository>::<function>` and names a launch harness kept next to the kernel: `run(inputs, outputs, launch)` receives the tensors by name as `torch` tensors on the GPU, every output filled with its sentinel, binds the arguments and launches the kernel. With `reference.kind` `torch`, `reference.entry` names a callable with the same signature.
 - `requires.env` names one of the environments of section 9. A batch uses one environment.
+- `requires.sm` and `requires.gpus`: compute capability and number of visible GPUs. `requires.nodes` (default 1): physical nodes; met when it is at most the operator's `GPURUN_NODES` (section 9). A request never names a host.
 - Inputs are not shipped. Both sides generate them from `gen` with the pinned generator; the GPU side checks `sha256` and marks the test `input_mismatch` if it differs.
 - Input classes: `normal` (random normal), `boundary` (non-divisible sizes), `special` (NaN, Inf, signed zero, subnormal).
 - Output buffers are pre-filled with `sentinel` so the write footprint can be checked exactly.
+- A `dist` test adds `"ranks": 2, "launcher": "triton-dist", "repeats": 5` and has no reference. It runs as `ranks` processes, one GPU each. `entry` names a per-rank harness `run(rank, ranks, inputs, outputs, launch)`, called once in every rank: same inputs for every rank, its own sentinel-filled outputs on its own GPU; the harness starts and stops the distributed runtime. Every repeat is a fresh launch; `timeout_s` bounds all repeats of the test together and kills every rank; the first repeat that fails ends the test with that repeat's status.
 
 Modes:
 
@@ -86,7 +88,7 @@ Modes:
 | `compare` | `reference.kind`: `none` or `torch` (a torch callable run on the same GPU) | Kernel outputs, and reference outputs when asked |
 | `agree` | `pair: { original, candidate }`, same inputs | Outputs of both kernels (verifiable-optimization line) |
 | `timing` | `warmup`, `repeats` | Every run's wall time as a list; no speedup is computed on the GPU side |
-| `dist` | `ranks`, `launcher`, `repeats` | Per repeat: sha256 of each output; one full copy of every distinct output |
+| `dist` | `ranks`, `launcher` (`triton-dist`), `repeats` | Per repeat: status, each rank's status, sha256 of each output of each rank; one full copy of every distinct output with the number of repeats that produced it |
 | `litmus` | `repeats` (large) | Histogram of observed outcomes |
 
 ## 6. Result bundle `results/<batch-id>/`
@@ -94,15 +96,23 @@ Modes:
 ```
 manifest.json            batch id, protocol, request commit, start / end time, per-test status
 env.json                 GPU model, compute capability, driver, CUDA, torch, triton,
-                         tilelang commit, nvshmem version, python, OS release
+                         tilelang commit, nvshmem library and bindings versions,
+                         python, OS release, nodes (the operator's GPURUN_NODES)
 <test-id>/meta.json      status, wall time, repeats, output sha256, input sha256 check
 <test-id>/out/<name>.tensor
 <test-id>/ref/<name>.tensor     only when reference.kind = torch
 <test-id>/stdout.log, stderr.log    truncated at 1 MB
+
+dist, instead of out/<name>.tensor:
+<test-id>/meta.json      also ranks, launcher, runs (per repeat: status, exit code, wall time,
+                         rank_status, outputs {"rank<r>/<name>": sha256}) and
+                         distinct {"rank<r>/<name>": {sha256: number of repeats}}
+<test-id>/out/rank<r>/<name>/<sha256>.tensor    one copy of every distinct output
 DONE                     written last
 ```
 
 - Test status: `ok`, `compile_error`, `runtime_error`, `timeout`, `input_mismatch`, `skipped_env`. Each test is independent; a failed test does not stop the batch.
+- In `dist`, `rank_status` holds one of these per rank, or `null` for a rank that left no exit code (killed, crashed or never started); a failed rank fails the test. Outputs are stored only for repeats whose status is `ok`.
 - No PASS / FAIL anywhere in the bundle.
 - No compiled artifacts (`.ptx`, `.ttir`): the work does not go below the front-end language.
 - Size limits: 50 MB per file, 100 MB per batch. A larger batch must be split by the dev side.
@@ -118,7 +128,14 @@ A polling loop (every 5 minutes while idle) lists open issues with `gpu:request`
 
 ## 9. Hardware and environments
 
-Hardware: one node with H800 GPUs (sm_90), NVLink-connected in pairs. A request uses at most one pair: `compare`, `agree` and `timing` batches use one GPU; `dist` and `litmus` batches use two, with NVSHMEM and two local processes. `gpurun` selects the two visible GPUs and the process count explicitly; setting only `CUDA_VISIBLE_DEVICES` is not enough for the pinned launcher. A test that needs two nodes is requested with `"requires": { "nodes": 2 }` and returns `skipped_env` on this node. A program written for several nodes may still run on one node through a reduced path; such a run is reported as single-node coverage and never as an inter-node result (see the inter-node hardware ticket).
+Hardware, two arrangements (decided on 2026-11-12):
+
+- **Single node**: one node with H800 GPUs (sm_90), NVLink-connected in pairs. A request (label `gpu:request`) uses at most one pair: `compare`, `agree` and `timing` batches use one GPU; `dist` and `litmus` batches use two, with NVSHMEM and two local processes.
+- **Multi node**: a request that needs more than one physical node states `"requires": { "nodes": <n> }`, carries the label `multinode:request` instead of `gpu:request`, and is run by a separate agent on a collaborator's cluster (Hopper generation; nothing else about it is fixed yet).
+
+Node count: the operator sets `GPURUN_NODES`, the number of nodes `gpurun` may use (default 1). `env.json` reports it as `nodes`; a batch whose `requires.nodes` exceeds it returns `skipped_env`, so a multi-node request returns `skipped_env` on the H800 node. A launcher that must name hosts reads them only from the operator's `GPURUN_HOSTS` (comma-separated, this node first); `gpurun` removes these names from the logs. A program written for several nodes may still run on one node through a reduced path; such a run is reported as single-node coverage and never as an inter-node result (see the inter-node hardware ticket).
+
+`dist` launch: the launcher `triton-dist` runs the pinned `scripts/launch.sh`, found beside the editable install of `triton_dist`, with `--nproc_per_node=<ranks>`; without that argument the script counts physical GPUs and ignores `CUDA_VISIBLE_DEVICES`. Rank r uses visible GPU r, so the operator selects the pair with `CUDA_VISIBLE_DEVICES`. A test whose `ranks` exceeds the visible GPUs returns `skipped_env`. This launcher starts ranks on one node only: until a launcher for the cluster exists, a `dist` test of a batch with `requires.nodes` above 1 returns `skipped_env` even where `GPURUN_NODES` allows the batch.
 
 "Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. TileScale and TileLang both provide the `tilelang` import name and cannot be installed together. The GPU side therefore keeps four named environments and reports every version in `env.json`:
 
@@ -129,14 +146,14 @@ Hardware: one node with H800 GPUs (sm_90), NVLink-connected in pairs. A request 
 | `tilelang` | TileLang built from source | TileLang `35850c0` |
 | `tilescale` | TileScale built from source | TileScale `71e7145` |
 
-Recorded but not pinned by the dev side: GPU driver, CUDA toolkit, Python, PyTorch, NVSHMEM and OS release. The first `env-check` batch reports them; from then on a change of any of them is a new `env.json` and is reported in the next result. A batch whose pinned version does not match returns `skipped_env`.
+Recorded but not pinned by the dev side: GPU driver, CUDA toolkit, Python, PyTorch, NVSHMEM (the library `nvidia-nvshmem-cu12` as `nvshmem_library` and the Python bindings `nvshmem4py-cu12` as `nvshmem_bindings`; their version numbers are unrelated) and OS release. The first `env-check` batch reports them; from then on a change of any of them is a new `env.json` and is reported in the next result. A batch whose pinned version does not match returns `skipped_env`.
 
 ## 10. Limits
 
 | Limit | Value | Reason |
 | --- | --- | --- |
 | Polling interval | 5 minutes while idle; no polling while a batch runs | Batches take minutes to hours, so latency does not matter; 12 requests an hour is far below API limits |
-| Per-test timeout | `timeout_s`, default 600 s | A hung kernel must not hold the queue |
+| Per-test timeout | `timeout_s`, default 600 s; in `dist`, for all repeats of the test together | A hung kernel must not hold the queue |
 | Per-batch wall time | 6 hours | The batch is then closed with the tests finished so far |
 | File size | 50 MB | GitHub warns above 50 MB and rejects above 100 MB |
 | Batch size | 100 MB | Keeps a fetch of `gpu-results` fast |

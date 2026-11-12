@@ -1,6 +1,7 @@
 """Describe the software stack of this machine and compare it with a request."""
 import importlib
 import importlib.metadata
+import os
 from pathlib import Path
 import platform
 import subprocess
@@ -12,9 +13,13 @@ PINS = {
     'tilelang': ('tilelang', 'git35850c0', False),
     'tilescale': ('tilelang', 'git71e7145', False),
 }
-MODULES = ('torch', 'triton', 'triton_dist', 'tilelang', 'nvshmem')
+# env.json key -> module or distribution. NVSHMEM is two packages with unrelated
+# version numbers: the library (a distribution without a module version) and
+# its Python bindings (module `nvshmem`).
+VERSIONS = {'torch': 'torch', 'triton': 'triton', 'triton_dist': 'triton_dist', 'tilelang': 'tilelang',
+            'nvshmem_library': 'nvidia-nvshmem-cu12', 'nvshmem_bindings': 'nvshmem'}
 # Distributions that carry a module's version under another name.
-DISTRIBUTIONS = {'nvshmem': ('nvidia-nvshmem-cu12', 'nvshmem4py-cu12')}
+DISTRIBUTIONS = {'nvshmem': ('nvshmem4py-cu12',)}
 
 
 def module_version(name):
@@ -66,14 +71,15 @@ def gpus():
 def collect():
     """Everything env.json reports. No host name, user name or path."""
     return {'python': platform.python_version(), 'os': os_release(), 'kernel': platform.release(),
-            'versions': {name: module_version(name) for name in MODULES}, **gpus()}
+            'nodes': int(os.environ.get('GPURUN_NODES', 1)),  # set by the operator; a request cannot raise it
+            'versions': {key: module_version(name) for key, name in VERSIONS.items()}, **gpus()}
 
 
 def mismatches(requires, env):
     """Reasons why this machine must not run a batch with these requirements."""
     reasons = []
-    if requires.get('nodes', 1) > 1:
-        reasons.append(f"needs {requires['nodes']} nodes; this is one node")
+    if requires.get('nodes', 1) > env.get('nodes', 1):
+        reasons.append(f"needs {requires['nodes']} nodes; GPURUN_NODES allows {env.get('nodes', 1)}")
     wanted = requires.get('gpus', 0)
     sm = requires.get('sm')
     usable = [g for g in env.get('gpus', []) if sm is None or g.get('sm') == sm]

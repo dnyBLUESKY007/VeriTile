@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Judge the result bundle of the batch `smoke-triton-001` on the development side.
+"""Judge the result bundle of a smoke batch on the development side.
 
-    python3 experiments/interp_gpu/smoke/judge.py <result-bundle-dir>
+    python3 experiments/interp_gpu/smoke/judge.py <result-bundle-dir> [<batch-id>]
+
+The batch id defaults to `smoke-triton-001`.
 
 The references are computed here from the regenerated inputs: a copy must
 return the input bit for bit, the half write must leave the second half as
@@ -17,12 +19,12 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from interp import gen_inputs, report, tensorfile
 from interp.tensorfile import Tensor
 
-BATCH = ROOT / 'experiments/interp_gpu/batches/smoke-triton-001'
+BATCHES = ROOT / 'experiments/interp_gpu/batches'
 
 
-def references():
+def references(batch):
     result = {}
-    for test in json.loads((BATCH / 'batch.json').read_text())['tests']:
+    for test in json.loads((batch / 'batch.json').read_text())['tests']:
         inputs = {i['name']: gen_inputs.generate(i['dtype'], i['shape'], i['gen']) for i in test['inputs']}
         out = test['outputs'][0]
         blank = tensorfile.filled(out['dtype'], out['shape'], out['sentinel'])
@@ -41,6 +43,7 @@ def references():
 
 
 if __name__ == '__main__':
-    built = report.build(BATCH, sys.argv[1], references())
+    batch = BATCHES / (sys.argv[2] if len(sys.argv) > 2 else 'smoke-triton-001')
+    built = report.build(batch, sys.argv[1], references(batch))
     print(report.render(built))
     raise SystemExit(0 if built['passed'] else 1)

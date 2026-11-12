@@ -2,8 +2,9 @@
 VeriTile.Staging.Dist.SpecLibSpec
 
 Interface and statements of the specification library, frozen by ticket S7.1.
-Signed on 2026-11-11: `allGather_apply` and `allReduce_eq_of_leaves_perm` with the
-definitions under them. Everything else is UNSIGNED.
+Signed: `allGather_apply` and `allReduce_eq_of_leaves_perm` (2026-11-11) and
+`moeCombine_of_moeDispatch` (2026-11-12), each with the definitions under it.
+Everything else is UNSIGNED.
 
 The library states what a collective computes, as a mathematical function or
 relation over one tensor per rank. It is independent of any front end and of
@@ -216,7 +217,7 @@ def AllToAllV {numRanks : Nat} {ι : Type} (L : AllToAllLayout numRanks)
 
 /-! ## MoE dispatch and combine, attention chunk merge (S7.5) -/
 
-/-- UNSIGNED. Owner: S7.5. The routing table of an MoE dispatch. Each rank has
+/-- Owner: S7.5. The routing table of an MoE dispatch. Each rank has
 `numTokens` tokens. Token `t` of rank `s` is sent once to each rank in
 `dest s t`: the ranks that own an expert the token selects. The set may be
 empty. `weight s t d` is the sum of the gate weights of the experts on rank `d`
@@ -225,7 +226,7 @@ structure MoERouting (numRanks numTokens : Nat) where
   dest : Fin numRanks → Fin numTokens → Finset (Fin numRanks)
   weight : Fin numRanks → Fin numTokens → Fin numRanks → ℝ
 
-/-- UNSIGNED. Owner: S7.5. A row assignment of an MoE dispatch: which token
+/-- Owner: S7.5. A row assignment of an MoE dispatch: which token
 each row of each receive buffer holds. `rows d p = some (s, t)` says that row
 `p` of rank `d` holds token `t` of rank `s`; `none` says that the row holds no
 token. A row holds at most one token. The assignment is not fixed in advance:
@@ -233,7 +234,7 @@ it depends on the schedule. -/
 abbrev MoERows (numRanks numTokens : Nat) : Type :=
   Fin numRanks → Nat → Option (Fin numRanks × Fin numTokens)
 
-/-- UNSIGNED. Owner: S7.5. The row assignments that a routing table allows: a
+/-- Owner: S7.5. The row assignments that a routing table allows: a
 token has exactly one row on each rank it is sent to, and no row on any other
 rank. An assignment that holds one token in two rows of one rank is not
 allowed. -/
@@ -242,7 +243,7 @@ structure MoERouting.Assigns {numRanks numTokens : Nat} (R : MoERouting numRanks
   existsUnique_row : ∀ s t, ∀ d ∈ R.dest s t, ∃! p, rows d p = some (s, t)
   mem_dest : ∀ d p s t, rows d p = some (s, t) → d ∈ R.dest s t
 
-/-- UNSIGNED. Owner: S7.5. MoE dispatch with the row assignment `rows`. The
+/-- Owner: S7.5. MoE dispatch with the row assignment `rows`. The
 routing table allows the assignment, and every row that holds a token holds
 the values of that token. Rows that hold no token are not constrained. A
 dispatch guarantees this for some `rows`, not for a given one. -/
@@ -251,7 +252,7 @@ def MoEDispatch {numRanks numTokens : Nat} {ι : Type} (R : MoERouting numRanks 
     (recv : RankTensor numRanks (Nat × ι)) : Prop :=
   R.Assigns rows ∧ ∀ d p s t, rows d p = some (s, t) → ∀ j, recv d (p, j) = tokens s (t, j)
 
-/-- UNSIGNED. Owner: S7.5. The first step of an MoE combine. Every rank
+/-- Owner: S7.5. The first step of an MoE combine. Every rank
 returns the result in each row that holds a token to the rank the token came
 from: `back s d (t, j)` is what rank `d` returns for token `t` of rank `s`.
 Entries for a rank that holds no row of the token are not constrained. -/
@@ -260,7 +261,7 @@ def MoEStoreBack {numRanks numTokens : Nat} {ι : Type} (rows : MoERows numRanks
     (back : Fin numRanks → RankTensor numRanks (Fin numTokens × ι)) : Prop :=
   ∀ d p s t, rows d p = some (s, t) → ∀ j, back s d (t, j) = results d (p, j)
 
-/-- UNSIGNED. Owner: S7.5. The second step of an MoE combine. Token `t` of
+/-- Owner: S7.5. The second step of an MoE combine. Token `t` of
 rank `s` becomes the sum of what the ranks returned for it, added in the order
 `order s t`. The order names the ranks to add: those in `dest s t`. No weight
 is applied here; a returned row already carries its weight. -/
@@ -270,7 +271,7 @@ noncomputable def moeCombine {numRanks numTokens : Nat} {ι : Type}
     RankTensor numRanks (Fin numTokens × ι) :=
   fun s i => (order s i.1).eval fun d => back s d i
 
-/-- UNSIGNED. Owner: S7.5. With identity experts, combine after dispatch gives
+/-- Owner: S7.5. With identity experts, combine after dispatch gives
 each token times its weights, added in the order of the combine, for every row
 assignment of the dispatch. An identity expert returns a received row times
 the weight of its token on that rank (`hexpert`). The order adds only ranks
