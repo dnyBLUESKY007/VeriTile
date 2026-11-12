@@ -32,8 +32,8 @@ ticket S3.1 lists the options and their costs):
 2. A footprint is a set of cells, `Set Addr`, not a set of regions.
 3. A footprint is a function of the state in which the segment starts.
 4. `FootprintSound` is two-sided: a frame clause for the write footprint and a
-   determinacy clause for the read footprint. A cell that a segment may leave
-   unchanged or overwrite, depending on a mask, belongs to both footprints.
+   determinacy clause for the read footprint. A written cell whose final
+   content depends on its old content belongs to the read footprint too.
 5. A segment records the CTA that runs it, because registers are not cells and
    `DistState.block` is keyed by rank and program ids.
 6. Slicing consumes the body of one kernel instance as a flat list of upstream
@@ -95,9 +95,8 @@ synchronization object.
 `reads_determine`: two states that agree on the read footprint and give the
 CTA the same local state have the same footprints, and if the run succeeds in
 one it succeeds in the other, with results that agree on the write footprint
-and on the local state. A cell that the result depends on, also when the
-segment only keeps its old content, therefore has to be in the read
-footprint. -/
+and on the local state. A written cell whose final content depends on its old
+content therefore has to be in the read footprint too. -/
 structure Segment.FootprintSound (seg : Segment) : Prop where
   frame : ∀ σ σ', seg.run σ = some σ' → ∀ p, p ∉ seg.writes σ → σ'.cell p = σ.cell p
   confined : ∀ σ σ', seg.run σ = some σ' → ∃ b, σ' = σ.setBlock seg.cta.rank seg.cta.pid b
