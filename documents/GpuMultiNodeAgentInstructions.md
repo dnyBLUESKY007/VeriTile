@@ -1,5 +1,7 @@
 # Instructions for the multi-node agent
 
+> **Retired on 2026-11-12.** The collaborator's cluster is no longer available. No `multinode:request` is issued and nobody runs this loop. Inter-node programs run on the one H800 node as logical nodes; see [GpuInterNodeRuns.md](GpuInterNodeRuns.md). The text below is kept as the record of the arrangement.
+
 Give this whole document to the agent that operates the multi-node cluster. It is the agent's standing prompt. The protocol it implements is [GpuExchangeProtocol.md](GpuExchangeProtocol.md), version 1, with the differences stated here.
 
 ## Your job

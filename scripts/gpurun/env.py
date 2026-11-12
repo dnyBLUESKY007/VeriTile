@@ -12,6 +12,7 @@ PINS = {
     'triton-dist': ('triton_dist', 'git7908e4e', False),
     'tilelang': ('tilelang', 'git35850c0', False),
     'tilescale': ('tilelang', 'git71e7145', False),
+    'tilescale-deepep': ('tilelang', 'git9ba8a60', False),
 }
 # env.json key -> module or distribution. NVSHMEM is two packages with unrelated
 # version numbers: the library (a distribution without a module version) and

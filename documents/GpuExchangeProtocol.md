@@ -132,10 +132,10 @@ A polling loop (every 5 minutes while idle) lists open issues with `gpu:request`
 
 ## 9. Hardware and environments
 
-Hardware, two arrangements (decided on 2026-11-12):
+Hardware (decided on 2026-11-12; the multi-node arrangement ended the same day):
 
 - **Single node**: one node with H800 GPUs (sm_90), NVLink-connected in pairs. A request (label `gpu:request`) uses at most one pair: `compare`, `agree` and `timing` batches use one GPU; `dist` and `litmus` batches use two, with NVSHMEM and two local processes.
-- **Multi node**: a request that needs more than one physical node states `"requires": { "nodes": <n> }`, carries the label `multinode:request` instead of `gpu:request`, and is run by a separate agent on a collaborator's cluster (Hopper generation; nothing else about it is fixed yet).
+- **Multi node**: none. The collaborator's cluster is no longer available (user decision, 2026-11-12), so no request needs more than one physical node and the `multinode:*` labels are not used. Programs written for several nodes run on the one node as logical nodes (below). Transport between hosts (network cards, RDMA) is outside what the project models or tests. If logical nodes cannot be made to run, the inter-node code paths are proved and reported as not run.
 
 Node count: the operator sets `GPURUN_NODES`, the number of nodes `gpurun` may use (default 1). `env.json` reports it as `nodes`; a batch whose `requires.nodes` exceeds it returns `skipped_env`, so a multi-node request returns `skipped_env` on the H800 node. A launcher that must name hosts reads them only from the operator's `GPURUN_HOSTS` (comma-separated, this node first); `gpurun` removes these names from the logs. A program written for several nodes may still run on one node through a reduced path; such a run is reported as single-node coverage and never as an inter-node result (see the inter-node hardware ticket).
 
@@ -143,7 +143,7 @@ Node count: the operator sets `GPURUN_NODES`, the number of nodes `gpurun` may u
 
 Logical nodes: the launcher `triton-dist-logical-nodes` runs the same pinned `scripts/launch.sh` once per logical node, all on the one physical node, through the script's own multi-node variables: node n of `logical_nodes` gets `ARNOLD_WORKER_NUM=<logical_nodes>`, `ARNOLD_ID=<n>`, `--nproc_per_node=<ranks / logical_nodes>` and the rendezvous address `127.0.0.1`, which is a constant of the launcher. Each logical node sees only its own GPUs: the launcher gives node n the n-th slice of the operator's `CUDA_VISIBLE_DEVICES` (devices 0 to `ranks` − 1 when it is unset), so rank r runs on the same GPU as under `triton-dist`, and a rank sees `LOCAL_WORLD_SIZE` = `ranks / logical_nodes`. The NVSHMEM settings, the interface setting among them, stay those of the pinned script, so the operator sets nothing new. A request names no host, interface or address. `requires.nodes` and `GPURUN_NODES` still count physical nodes: a logical-node test in a batch with `requires.nodes` above 1 returns `skipped_env`, and so does one for which `CUDA_VISIBLE_DEVICES` lists fewer GPUs than `ranks`. What such a run does and does not exercise is in [GpuInterNodeRuns.md](GpuInterNodeRuns.md).
 
-"Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. TileScale and TileLang both provide the `tilelang` import name and cannot be installed together. The GPU side therefore keeps four named environments and reports every version in `env.json`:
+"Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. TileScale and TileLang both provide the `tilelang` import name and cannot be installed together. The GPU side therefore keeps five named environments and reports every version in `env.json`:
 
 | Environment | Contents | Pinned by the dev side |
 | --- | --- | --- |
@@ -151,6 +151,7 @@ Logical nodes: the launcher `triton-dist-logical-nodes` runs the same pinned `sc
 | `triton-dist` | Triton-distributed built from source with its bundled Triton (a patched 3.7.1, not 3.5.1), NVSHMEM, MPI launcher | Triton-distributed `7908e4e` |
 | `tilelang` | TileLang built from source | TileLang `35850c0` |
 | `tilescale` | TileScale built from source | TileScale `71e7145` |
+| `tilescale-deepep` | TileScale built from source on the branch of the DeepEP version 1 port | TileScale `9ba8a60` |
 
 Recorded but not pinned by the dev side: GPU driver, CUDA toolkit, Python, PyTorch, NVSHMEM (the library `nvidia-nvshmem-cu12` as `nvshmem_library` and the Python bindings `nvshmem4py-cu12` as `nvshmem_bindings`; their version numbers are unrelated) and OS release. The first `env-check` batch reports them; from then on a change of any of them is a new `env.json` and is reported in the next result. A batch whose pinned version does not match returns `skipped_env`.
 
