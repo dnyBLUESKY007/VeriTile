@@ -1,0 +1,77 @@
+{
+  "protocol": 1,
+  "batch_id": "internode-logical-env-001",
+  "mode": "dist",
+  "supersedes": null,
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "triton-dist"
+  },
+  "timeout_s": 600,
+  "tests": [
+    {
+      "id": "one_node/put_barrier",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/smoke/dist_logical_nodes.py::put_barrier",
+      "launch": {},
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "received",
+          "dtype": "int64",
+          "shape": [
+            4
+          ],
+          "sentinel": "0x8000000000000000"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    },
+    {
+      "id": "logical_nodes/put_barrier",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/smoke/dist_logical_nodes.py::put_barrier",
+      "launch": {},
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "received",
+          "dtype": "int64",
+          "shape": [
+            4
+          ],
+          "sentinel": "0x8000000000000000"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist-logical-nodes",
+      "logical_nodes": 2,
+      "repeats": 2
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # GPU exchange protocol v1
 
-Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Amended on 2026-11-12 by sub-issue C-I3.1, not yet confirmed by the GPU side: `dist` mode (sections 5 and 6), the operator's node count, and two NVSHMEM versions in `env.json` (sections 6 and 9). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
+Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Amended on 2026-11-12 by sub-issue C-I3.1, not yet confirmed by the GPU side: `dist` mode (sections 5 and 6), the operator's node count, and two NVSHMEM versions in `env.json` (sections 6 and 9). Amended on 2026-11-12 by sub-issue C-I3.2, not yet confirmed by the GPU side: the launcher `triton-dist-logical-nodes` with the test field `logical_nodes` (sections 5, 6 and 9). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
 
 Purpose: the development machine (no GPU) asks an sm_90 (Hopper) server to run kernels and gets raw results back, automatically. GPU results are empirical evidence only; they never define semantics.
 
@@ -79,6 +79,7 @@ It runs only `PYTHONPATH=scripts python -m gpurun run <batch> --out <result-dir>
 - Input classes: `normal` (random normal), `boundary` (non-divisible sizes), `special` (NaN, Inf, signed zero, subnormal).
 - Output buffers are pre-filled with `sentinel` so the write footprint can be checked exactly.
 - A `dist` test adds `"ranks": 2, "launcher": "triton-dist", "repeats": 5` and has no reference. It runs as `ranks` processes, one GPU each. `entry` names a per-rank harness `run(rank, ranks, inputs, outputs, launch)`, called once in every rank: same inputs for every rank, its own sentinel-filled outputs on its own GPU; the harness starts and stops the distributed runtime. Every repeat is a fresh launch; `timeout_s` bounds all repeats of the test together and kills every rank; the first repeat that fails ends the test with that repeat's status.
+- A `dist` test with `"launcher": "triton-dist-logical-nodes"` also states `"logical_nodes": <n>`, at least 2 and a divisor of `ranks`: its ranks start on the one physical node as n logical nodes of `ranks / n` local ranks each (section 9). `requires.nodes` is not raised for it. With any other launcher the field is refused.
 
 Modes:
 
@@ -88,7 +89,7 @@ Modes:
 | `compare` | `reference.kind`: `none` or `torch` (a torch callable run on the same GPU) | Kernel outputs, and reference outputs when asked |
 | `agree` | `pair: { original, candidate }`, same inputs | Outputs of both kernels (verifiable-optimization line) |
 | `timing` | `warmup`, `repeats` | Every run's wall time as a list; no speedup is computed on the GPU side |
-| `dist` | `ranks`, `launcher` (`triton-dist`), `repeats` | Per repeat: status, each rank's status, sha256 of each output of each rank; one full copy of every distinct output with the number of repeats that produced it |
+| `dist` | `ranks`, `launcher` (`triton-dist` or `triton-dist-logical-nodes`), `logical_nodes` (the second launcher only), `repeats` | Per repeat: status, each rank's status, sha256 of each output of each rank; one full copy of every distinct output with the number of repeats that produced it |
 | `litmus` | `repeats` (large) | Histogram of observed outcomes |
 
 ## 6. Result bundle `results/<batch-id>/`
@@ -106,13 +107,16 @@ env.json                 GPU model, compute capability, driver, CUDA, torch, tri
 dist, instead of out/<name>.tensor:
 <test-id>/meta.json      also ranks, launcher, runs (per repeat: status, exit code, wall time,
                          rank_status, outputs {"rank<r>/<name>": sha256}) and
-                         distinct {"rank<r>/<name>": {sha256: number of repeats}}
+                         distinct {"rank<r>/<name>": {sha256: number of repeats}};
+                         a logical-node test also "topology": "logical-nodes",
+                         logical_nodes and local_ranks
 <test-id>/out/rank<r>/<name>/<sha256>.tensor    one copy of every distinct output
 DONE                     written last
 ```
 
 - Test status: `ok`, `compile_error`, `runtime_error`, `timeout`, `input_mismatch`, `skipped_env`. Each test is independent; a failed test does not stop the batch.
 - In `dist`, `rank_status` holds one of these per rank, or `null` for a rank that left no exit code (killed, crashed or never started); a failed rank fails the test. Outputs are stored only for repeats whose status is `ok`.
+- A `dist` result whose `meta.json` says `"topology": "logical-nodes"` ran on one physical node. It is never a result on physical nodes, whatever the program's node count was.
 - No PASS / FAIL anywhere in the bundle.
 - No compiled artifacts (`.ptx`, `.ttir`): the work does not go below the front-end language.
 - Size limits: 50 MB per file, 100 MB per batch. A larger batch must be split by the dev side.
@@ -136,6 +140,8 @@ Hardware, two arrangements (decided on 2026-11-12):
 Node count: the operator sets `GPURUN_NODES`, the number of nodes `gpurun` may use (default 1). `env.json` reports it as `nodes`; a batch whose `requires.nodes` exceeds it returns `skipped_env`, so a multi-node request returns `skipped_env` on the H800 node. A launcher that must name hosts reads them only from the operator's `GPURUN_HOSTS` (comma-separated, this node first); `gpurun` removes these names from the logs. A program written for several nodes may still run on one node through a reduced path; such a run is reported as single-node coverage and never as an inter-node result (see the inter-node hardware ticket).
 
 `dist` launch: the launcher `triton-dist` runs the pinned `scripts/launch.sh`, found beside the editable install of `triton_dist`, with `--nproc_per_node=<ranks>`; without that argument the script counts physical GPUs and ignores `CUDA_VISIBLE_DEVICES`. Rank r uses visible GPU r, so the operator selects the pair with `CUDA_VISIBLE_DEVICES`. A test whose `ranks` exceeds the visible GPUs returns `skipped_env`. This launcher starts ranks on one node only: until a launcher for the cluster exists, a `dist` test of a batch with `requires.nodes` above 1 returns `skipped_env` even where `GPURUN_NODES` allows the batch.
+
+Logical nodes: the launcher `triton-dist-logical-nodes` runs the same pinned `scripts/launch.sh` once per logical node, all on the one physical node, through the script's own multi-node variables: node n of `logical_nodes` gets `ARNOLD_WORKER_NUM=<logical_nodes>`, `ARNOLD_ID=<n>`, `--nproc_per_node=<ranks / logical_nodes>` and the rendezvous address `127.0.0.1`, which is a constant of the launcher. Each logical node sees only its own GPUs: the launcher gives node n the n-th slice of the operator's `CUDA_VISIBLE_DEVICES` (devices 0 to `ranks` − 1 when it is unset), so rank r runs on the same GPU as under `triton-dist`, and a rank sees `LOCAL_WORLD_SIZE` = `ranks / logical_nodes`. The NVSHMEM settings, the interface setting among them, stay those of the pinned script, so the operator sets nothing new. A request names no host, interface or address. `requires.nodes` and `GPURUN_NODES` still count physical nodes: a logical-node test in a batch with `requires.nodes` above 1 returns `skipped_env`, and so does one for which `CUDA_VISIBLE_DEVICES` lists fewer GPUs than `ranks`. What such a run does and does not exercise is in [GpuInterNodeRuns.md](GpuInterNodeRuns.md).
 
 "Versions" means the software stack installed on the server. The front ends cannot share one Python environment, because Triton-distributed builds its own Triton and TileLang builds its own TVM. TileScale and TileLang both provide the `tilelang` import name and cannot be installed together. The GPU side therefore keeps four named environments and reports every version in `env.json`:
 

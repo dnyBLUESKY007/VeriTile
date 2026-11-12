@@ -17,16 +17,25 @@ inputs and its own copy of every output. The harness starts and stops the
 distributed runtime itself (Triton-distributed: `initialize_distributed()` ...
 `finalize_distributed()`); gpurun reads the outputs after it returns.
 
-A launcher is an entry of `LAUNCHERS`: a function `(ranks, work)` that returns
+A launcher is an entry of `LAUNCHERS`: a function `(test, work)` that returns
 the one command which starts `python -m gpurun _rank <work>` once per rank
 with `RANK`, `LOCAL_RANK` and `WORLD_SIZE` set, and exits non-zero when a rank
 failed. Every repeat is a fresh launch. `timeout_s` bounds the whole test; when
 it passes, every process below the launcher is killed. The first repeat that
 fails ends the test with that repeat's status.
 
+The launcher `triton-dist-logical-nodes` takes one more field, `"logical_nodes": 2`.
+It starts the ranks on this one host as that many logical nodes of
+`ranks / logical_nodes` local ranks each, so a rank sees `LOCAL_WORLD_SIZE`
+= `ranks / logical_nodes` and only its own node's GPUs, and still runs on the
+GPU the launcher `triton-dist` gives that rank. Such a test is not a run on
+several physical nodes: `requires.nodes` stays 1, and its meta.json says
+`"topology": "logical-nodes"` with `logical_nodes` and `local_ranks`.
+
 Result of a test:
 
     meta.json                              status, ranks, launcher, repeats, inputs, wall_time_s,
+                                           topology, logical_nodes, local_ranks (logical nodes only),
                                            runs[i]: status, exit_code, wall_time_s, rank_status,
                                                     outputs {"rank<r>/<name>": sha256}
                                            distinct {"rank<r>/<name>": {sha256: number of repeats}}
@@ -41,6 +50,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -72,26 +82,55 @@ def launch_script():
     return script if script and script.is_file() else None
 
 
-def triton_dist(ranks, work):
+def triton_dist(test, work):
     """The pinned launcher: NVSHMEM settings, then torchrun with one process per visible GPU."""
     # `--nproc_per_node=` with `=`: without it the script counts physical GPUs
     # with nvidia-smi and ignores CUDA_VISIBLE_DEVICES.
-    return ['bash', str(launch_script()), f'--nproc_per_node={ranks}', '-m', 'gpurun', '_rank', str(work)]
+    return ['bash', str(launch_script()), f"--nproc_per_node={test['ranks']}", '-m', 'gpurun', '_rank', str(work)]
 
 
-def mock(ranks, work):
+LOGICAL = 'triton-dist-logical-nodes'
+LOOPBACK = '127.0.0.1'  # torchrun rendezvous of the logical nodes: this host, whatever the environment names
+
+
+def devices(ranks):
+    """The operator's GPUs in rank order: the entries of `CUDA_VISIBLE_DEVICES`, or devices 0 .. ranks-1 without it."""
+    visible = os.environ.get('CUDA_VISIBLE_DEVICES')
+    return [str(index) for index in range(ranks)] if visible is None else [name for name in visible.split(',') if name]
+
+
+def logical_nodes(test, work):
+    """The pinned launcher once per logical node of this host, driven through its own multi-node variables.
+
+    Node n is one `launch.sh` with torchrun node rank n of `logical_nodes`, the
+    loopback rendezvous, and only its own slice of the operator's GPUs visible.
+    The NVSHMEM settings stay those of the pinned script.
+    """
+    nodes = test['logical_nodes']
+    local = test['ranks'] // nodes
+    own = devices(test['ranks'])
+    script = [f'CUDA_VISIBLE_DEVICES={shlex.quote(",".join(own[node * local:(node + 1) * local]))} '
+              f'ARNOLD_WORKER_NUM={nodes} ARNOLD_ID={node} ARNOLD_WORKER_0_HOST={LOOPBACK} '
+              f'bash "$0" --nproc_per_node={local} "$@" & pids+=($!)' for node in range(nodes)]
+    # shortcut: when one node's launch fails the others run on until the test's timeout; kill them here if that wait ever matters.
+    script += ['code=0', 'for pid in "${pids[@]}"; do wait "$pid" || code=1; done', 'exit $code']
+    return ['bash', '-c', '\n'.join(script), str(launch_script()), '-m', 'gpurun', '_rank', str(work)]
+
+
+def mock(test, work):
     """CPU launcher of the self-test."""
-    return [sys.executable, '-m', 'gpurun', '_mock_torchrun', str(ranks), str(work)]
+    return [sys.executable, '-m', 'gpurun', '_mock_torchrun', str(test['ranks']), str(work)]
 
 
-LAUNCHERS = {'triton-dist': triton_dist, 'mock': mock}
+LAUNCHERS = {'triton-dist': triton_dist, LOGICAL: logical_nodes, 'mock': mock}
 
 
 def mock_torchrun(ranks, work):
     """What torchrun does, as far as gpurun relies on it: each rank in its own session, its variables, 1 if a rank failed."""
     processes = [subprocess.Popen(
         [sys.executable, '-m', 'gpurun', '_rank', str(work)], start_new_session=True,
-        env=dict(os.environ, RANK=str(rank), LOCAL_RANK=str(rank), WORLD_SIZE=str(ranks))) for rank in range(ranks)]
+        env=dict(os.environ, RANK=str(rank), LOCAL_RANK=str(rank), WORLD_SIZE=str(ranks), LOCAL_WORLD_SIZE=str(ranks)))
+        for rank in range(ranks)]
     return int(any([process.wait() for process in processes]))
 
 
@@ -106,6 +145,11 @@ def check_request(batch):
         for field in ('ranks', 'repeats'):
             if type(test.get(field)) is not int or test[field] < 1:
                 raise ValueError(where + f'{field} must be a positive integer')
+        logical = test.get('logical_nodes')
+        if test['launcher'] != LOGICAL and logical is not None:
+            raise ValueError(where + f'logical_nodes needs the launcher {LOGICAL!r}')
+        if test['launcher'] == LOGICAL and (type(logical) is not int or logical < 2 or test['ranks'] % logical):
+            raise ValueError(where + 'logical_nodes must be an integer of at least 2 that divides ranks')
         if test.get('reference', {}).get('kind', 'none') != 'none':
             raise ValueError(where + 'a dist test has no reference')
         for spec in test['outputs']:
@@ -120,11 +164,14 @@ def refusals(test, env, nodes):
     # Only the self-test's pair of mock launcher and mock frontend touches no GPU.
     if (test['launcher'], test['frontend']) != ('mock', 'mock') and test['ranks'] > visible:
         reasons.append(f"needs {test['ranks']} GPUs, one per rank; {visible} visible")
-    if test['launcher'] == 'triton-dist':
-        if nodes > 1:
-            reasons.append(f"launcher 'triton-dist' starts ranks on one node; the batch requires {nodes}")
+    if test['launcher'] in ('triton-dist', LOGICAL):
+        if nodes > 1:  # physical nodes: logical nodes never count as them
+            reasons.append(f"launcher {test['launcher']!r} starts ranks on one node; the batch requires {nodes}")
         if launch_script() is None:
             reasons.append('scripts/launch.sh not found beside an editable install of triton_dist')
+    if test['launcher'] == LOGICAL and len(devices(test['ranks'])) < test['ranks']:
+        reasons.append(f"CUDA_VISIBLE_DEVICES lists {len(devices(test['ranks']))} GPUs; "
+                       f"the logical nodes need {test['ranks']}, one per rank")
     return reasons
 
 
@@ -161,6 +208,9 @@ def run_test(test, timeout_s, test_dir, root, env, nodes):
         return {'status': 'skipped_env', 'reasons': reasons}
     meta = {'ranks': test['ranks'], 'launcher': test['launcher'], 'repeats': test['repeats'],
             'runs': [], 'distinct': {}, 'status': 'ok'}
+    if test['launcher'] == LOGICAL:  # the label that keeps this result apart from a run on physical nodes
+        meta.update(topology='logical-nodes', logical_nodes=test['logical_nodes'],
+                    local_ranks=test['ranks'] // test['logical_nodes'])
     deadline = time.monotonic() + timeout_s
     with tempfile.TemporaryDirectory(prefix='gpurun-') as work:
         work = Path(work)
@@ -168,7 +218,7 @@ def run_test(test, timeout_s, test_dir, root, env, nodes):
         if not all(entry['match'] for entry in meta['inputs'].values()):
             return {**meta, 'status': 'input_mismatch'}
         (work / 'spec.json').write_text(json.dumps({'test': test, 'root': str(root)}))
-        command = LAUNCHERS[test['launcher']](test['ranks'], work)
+        command = LAUNCHERS[test['launcher']](test, work)
         with (work / 'stdout').open('wb') as out, (work / 'stderr').open('wb') as err:
             for repeat in range(test['repeats']):
                 if time.monotonic() >= deadline:
@@ -239,6 +289,9 @@ def rank_body(work):
     rank, ranks = int(os.environ['RANK']), int(os.environ['WORLD_SIZE'])
     if ranks != test['ranks']:
         raise ValueError(f"the launcher started {ranks} ranks; the test asks for {test['ranks']}")
+    if test['launcher'] == LOGICAL and int(os.environ['LOCAL_WORLD_SIZE']) * test['logical_nodes'] != ranks:
+        raise ValueError(f"the launcher gave LOCAL_WORLD_SIZE={os.environ['LOCAL_WORLD_SIZE']}; "
+                         f"{test['logical_nodes']} logical nodes of {ranks} ranks have {ranks // test['logical_nodes']}")
     if test['frontend'] in run.TORCH_FRONTENDS:
         import torch
         # The mapping of the pinned runtime (initialize_distributed): rank to visible GPU LOCAL_RANK.

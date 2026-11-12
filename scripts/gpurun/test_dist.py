@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import struct
+import subprocess
 import sys
 import tempfile
 import time
@@ -28,6 +29,12 @@ class CompilationError(Exception):
 
 def world(rank, ranks, inputs, outputs, launch):
     outputs['world'] = Tensor('int32', (2,), struct.pack('<2i', rank, ranks))
+
+def topology(rank, ranks, inputs, outputs, launch):
+    visible = os.environ['CUDA_VISIBLE_DEVICES'].split(',')
+    own = visible[int(os.environ['LOCAL_RANK'])]  # the device initialize_distributed would select
+    seen = [os.environ[name] for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE', 'LOCAL_WORLD_SIZE')]
+    outputs['topology'] = Tensor('int32', (6,), struct.pack('<6i', *map(int, seen), int(own), len(visible)))
 
 def first_repeat_differs(rank, ranks, inputs, outputs, launch):
     seen = HERE / f'seen{rank}'
@@ -54,15 +61,20 @@ def names_hosts(rank, ranks, inputs, outputs, launch):
     world(rank, ranks, inputs, outputs, launch)
 '''
 
+# The argument and multi-node variable handling of the pinned script, and the
+# variables torchrun gives a rank of node `--node_rank` among `--nnodes`.
 LAUNCH_SH = '''
 for arg in "$@"; do
   case $arg in
-    --nproc_per_node=*) ranks="${arg#*=}" ;;
+    --nproc_per_node=*) procs="${arg#*=}" ;;
     *) rest+=("$arg") ;;
   esac
 done
-for ((rank = 0; rank < ranks; rank++)); do
-  RANK=$rank LOCAL_RANK=$rank WORLD_SIZE=$ranks PYTHON "${rest[@]}" &
+nodes=${ARNOLD_WORKER_NUM:=1}
+node=${ARNOLD_ID:=0}
+for ((rank = 0; rank < procs; rank++)); do
+  RANK=$((node * procs + rank)) LOCAL_RANK=$rank WORLD_SIZE=$((nodes * procs)) LOCAL_WORLD_SIZE=$procs \\
+    PYTHON "${rest[@]}" &
 done
 wait
 '''
@@ -180,7 +192,7 @@ class Dist(unittest.TestCase):
             self.assertEqual(dist.refusals({**real, 'ranks': 2}, h800, 1), [])
             self.assertEqual(len(dist.refusals({**real, 'ranks': 2}, h800, 2)), 1)  # one node only
             self.assertEqual(len(dist.refusals({**real, 'launcher': 'mock', 'frontend': 'triton-dist'}, h800, 1)), 1)
-            self.assertEqual(dist.triton_dist(2, Path('/work')), [
+            self.assertEqual(dist.triton_dist({'ranks': 2}, Path('/work')), [
                 'bash', '/td/scripts/launch.sh', '--nproc_per_node=2', '-m', 'gpurun', '_rank', '/work'])
             self.write_batch([real, test_case('mock_needs_no_gpu', 'world', ranks=4)])
             self.assertEqual(self.run_batch(env=h800), {'real': 'skipped_env', 'mock_needs_no_gpu': 'ok'})
@@ -203,6 +215,57 @@ class Dist(unittest.TestCase):
             self.assertEqual(self.run_batch(env=h800), {'real': 'ok'})
         self.assertEqual(sorted(self.meta('real')['distinct']), ['rank0/world', 'rank1/world'])
 
+    def test_logical_nodes_have_their_own_local_ranks_and_devices(self):
+        checkout = self.root / 'Triton-distributed'
+        (checkout / 'python/triton_dist').mkdir(parents=True)
+        (checkout / 'python/triton_dist/__init__.py').write_text('')
+        (checkout / 'scripts').mkdir()
+        (checkout / 'scripts/launch.sh').write_text(LAUNCH_SH.replace('PYTHON', sys.executable))
+        h800 = {'gpus': [{'name': 'H800', 'sm': 90}] * 4, 'versions': {}}
+        seen = {'name': 'topology', 'dtype': 'int32', 'shape': [6], 'sentinel': '0x80000000'}
+        two_by_one = test_case('two_by_one', 'topology', launcher=dist.LOGICAL, logical_nodes=2, outputs=[seen])
+        with mock.patch.object(sys, 'path', [str(checkout / 'python'), *sys.path]), \
+                mock.patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': '2,3,4,5'}):
+            importlib.invalidate_caches()
+            self.write_batch([two_by_one, {**two_by_one, 'id': 'two_by_two', 'ranks': 4},
+                              test_case('one_node', 'topology', launcher='triton-dist', outputs=[seen])])
+            self.assertEqual(self.run_batch(env=h800), {'two_by_one': 'ok', 'two_by_two': 'ok', 'one_node': 'ok'})
+            self.assertEqual(len(dist.refusals(two_by_one, h800, 2)), 1)  # logical nodes are not physical nodes
+            os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+            self.assertEqual(len(dist.refusals(two_by_one, h800, 1)), 1)  # no GPU left for the second node
+
+        def ranks(test_id):  # per rank: RANK, LOCAL_RANK, WORLD_SIZE, LOCAL_WORLD_SIZE, its device, devices it sees
+            stored = sorted((self.out / test_id / 'out').glob('rank*/topology/*.tensor'))
+            return [struct.unpack('<6i', tensorfile.read(path).data) for path in stored]
+
+        self.assertEqual(ranks('two_by_one'), [(0, 0, 2, 1, 2, 1), (1, 0, 2, 1, 3, 1)])
+        self.assertEqual(ranks('two_by_two'), [(0, 0, 4, 2, 2, 2), (1, 1, 4, 2, 3, 2), (2, 0, 4, 2, 4, 2), (3, 1, 4, 2, 5, 2)])
+        self.assertEqual(ranks('one_node'), [(0, 0, 2, 2, 2, 4), (1, 1, 2, 2, 3, 4)])  # the same device per rank
+        meta = self.meta('two_by_two')
+        self.assertEqual((meta['topology'], meta['logical_nodes'], meta['local_ranks']), ('logical-nodes', 2, 2))
+        self.assertNotIn('topology', self.meta('one_node'))
+
+    def test_logical_node_command_uses_loopback_and_fails_with_a_node(self):
+        script = self.root / 'launch.sh'
+        script.write_text('exit $ARNOLD_ID\n')
+        with mock.patch.object(dist, 'launch_script', return_value=script), mock.patch.dict(os.environ):
+            os.environ.pop('CUDA_VISIBLE_DEVICES', None)  # then rank r is device r, as under `triton-dist`
+            command = dist.logical_nodes({'ranks': 2, 'logical_nodes': 2}, Path('/work'))
+            self.assertEqual(subprocess.run(command).returncode, 1)  # node 1 failed
+            script.write_text('exit 0\n')
+            self.assertEqual(subprocess.run(command).returncode, 0)
+        self.assertEqual(command[:2] + command[3:], ['bash', '-c', str(script), '-m', 'gpurun', '_rank', '/work'])
+        for node in range(2):
+            self.assertIn(f'CUDA_VISIBLE_DEVICES={node} ARNOLD_WORKER_NUM=2 ARNOLD_ID={node} '
+                          'ARNOLD_WORKER_0_HOST=127.0.0.1 bash "$0" --nproc_per_node=1 "$@" &', command[2])
+
+    def test_rank_refuses_a_topology_the_launcher_did_not_give(self):
+        logical = test_case('logical', 'world', launcher=dist.LOGICAL, logical_nodes=2)
+        (self.root / 'spec.json').write_text(json.dumps({'test': logical, 'root': str(self.root)}))
+        one_node = {'RANK': '0', 'LOCAL_RANK': '0', 'WORLD_SIZE': '2', 'LOCAL_WORLD_SIZE': '2'}
+        with mock.patch.dict(os.environ, one_node), self.assertRaisesRegex(ValueError, 'LOCAL_WORLD_SIZE=2'):
+            dist.rank_body(self.root)
+
     def test_host_names_stay_out_of_the_bundle(self):
         self.write_batch([test_case('hosts', 'names_hosts')])
         with mock.patch.dict(os.environ, {'GPURUN_HOSTS': 'alpha-node,beta-node'}):
@@ -214,6 +277,8 @@ class Dist(unittest.TestCase):
 
     def test_malformed_requests_are_refused(self):
         for change in ({'launcher': 'ssh'}, {'ranks': 0}, {'repeats': True}, {'reference': {'kind': 'torch'}},
+                       {'logical_nodes': 2}, {'launcher': dist.LOGICAL}, {'launcher': dist.LOGICAL, 'logical_nodes': 1},
+                       {'launcher': dist.LOGICAL, 'logical_nodes': 2, 'ranks': 3},
                        {'outputs': [{'name': '../world', 'dtype': 'int32', 'shape': [2]}]}):
             self.write_batch([test_case('bad', 'world', **change)])
             with self.assertRaises(ValueError, msg=change):
