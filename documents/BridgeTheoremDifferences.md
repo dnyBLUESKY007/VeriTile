@@ -1,6 +1,6 @@
 # Bridge theorem: existing lemmas and differences
 
-Ticket I4.1. This document supports the bridge theorem of
+Tickets I4.1 and I4.2. This document supports the bridge theorem of
 [the interpreter interface](InterpInterface.md):
 
 ```lean
@@ -22,15 +22,22 @@ which upstream lemmas already cover part of the proof, and where the two
 execution definitions differ. Each difference names the side condition it
 needs; tickets I4.2 and I4.3 turn these into the conjuncts of `BridgePre`.
 
+Ticket I4.2 proved the bridge for expressions in
+[`VeriTile/Interp/Bridge/EvalOp.lean`](../VeriTile/Interp/Bridge/EvalOp.lean)
+and defined there the preconditions that the differences D1, D3 to D10 and D13
+need. Section 3 names each one. Statements (stores, atomic operations, loops,
+conditionals) are ticket I4.3.
+
 "Structural side" means `FP.Structural.exec realAlgebra` on the source kernel
 (`VeriTile/Triton/Float/Structural.lean`). "Proof side" means `exec` on the
 projected kernel (`VeriTile/Triton/Semantics/EvalOp.lean`, `Step.lean`).
-Upstream sources were read at `18bd31dcb`.
+Upstream sources were read at `18bd31dcb` by I4.1 and at `f64f21ef6` by I4.2.
 
-Every claim carries one of four marks:
+Every claim carries one of five marks:
 
 | Mark | Meaning |
 | --- | --- |
+| proved | A theorem or an example of `VeriTile/Interp/Bridge/EvalOp.lean`, in the main target. |
 | checked | Lean accepted a proof of it in a scratch file. The file is not part of the repository. |
 | read | Both sides were read in the source and the claim restates them. |
 | inferred | Follows from what was read, by an argument that was not run through Lean. |
@@ -60,8 +67,8 @@ Every field ignores its precision and dtype arguments.
 | `compareLt`, `compareLe`, `compareEq` | `decide` of the order and equality of `WithBot ℝ` | `ComparableDType.lt`, `le`, `eq`, `gt`, `ge`, `ne` | checked for the six comparisons at every comparable dtype |
 | `cast`, `fp32Load` | Identity | `FloatDType.cast` is the identity; an `fp32` compute load projects to a `.real` load | checked |
 | `fromNat`, `fromInt` | The coercion through `ℝ` | `Tile.natToReal`, `Tile.intToReal` | checked |
-| `fp32Bits` | `Float32Bits.decodeReal` | A projected `fp32` constant is `Op.const` of `Float32Bits.decodeRat`; random values are the rational value of the same bits | checked for a constant with a finite encoding and for `uniform32`; inferred for `rand`, `randTensor` and bitcasts |
-| `float8E5Bits` | `decodeRat` of the byte, `0` when it has none | `Float8E5Bits.decodeTile`; see D5 | read |
+| `fp32Bits` | `Float32Bits.decodeReal` | A projected `fp32` constant is `Op.const` of `Float32Bits.decodeRat`; random values are the rational value of the same bits | proved for a constant with a finite encoding, `uniform32`, `rand`, `randTensor` and the bitcast of an `int32` or `uint32` constant |
+| `float8E5Bits` | `decodeRat` of the byte, `0` when it has none | `Float8E5Bits.decodeTile`; see D5 | proved under D5 |
 | `minimum`, `divRN` | `min`, `WithBot.realDiv` | `min`, `NumericDType.real.div` | checked |
 | `reduceSum`, `reduceMin`, `reduceMax`, `reduceSumTyped`, `reduceMaxTyped`, `scan`, `dot`, `dotWithOptions`, `integerDot` | The upstream `Tile.reduceSum`, `Tile.reduceMin`, `Tile.reduceMax`, `Tile.reduceSumTyped`, `Tile.reduceMaxTyped`, `Tile.scan`, `Tile.dot`, `Tile.dotInt` on the same tile | The same function | checked |
 | `dotTyped`, `dotAcc` | `Tile.dot`, then `WithBot.realAdd` of the accumulator | `Tile.dot` between identity casts, then `WithBot.realAdd` | checked |
@@ -82,14 +89,34 @@ context `p` and every state `s`, if each sub-expression `e` satisfies
 (Structural.evalOp realAlgebra p e s).map toTile = evalOp e (erase s)
 ```
 
-then so does `C` applied to them. This is one step of the induction that
-I4.2 needs, and it holds for every value, `⊥` included. It was proved for 97
-of the 113 constructors of `Op`. The other 16 are `load` (D1, D8, D13),
-`castRealToInt8` (D3), `argMin` and `sort` (D4), `decodeFloat8E5` (D5),
-`reshape` (D7), and ten that were only read: `rand`, `randTensor`,
-`philox4x32`, `ptrBase`, the four `makeBlockPtr` forms and the two
-`advanceBlockPtr` forms. `argMax` and `argMaxTyped` were proved on a non-empty
-axis (D6), `argMaxTyped` without a precision override.
+then so does `C` applied to them. This is one step of the induction, and it
+holds for every value, `⊥` included. I4.1 checked it for 97 of the 113
+constructors of `Op`.
+
+I4.2 closed the induction (proved). For every `Op`, every precision context
+and every state:
+
+```lean
+theorem evalOp_bridge (s : Structural.State (WithBot ℝ)) :
+    ∀ {d : TileDType} {sh : TileShape} (e : Op d sh), AllNodes (BridgeSite s) e →
+      ∀ p, (Structural.evalOp realAlgebra p e s).map toTile = evalOp e (erase s)
+```
+
+`evalComputeOp_bridge` and `evalExpr_bridge` state the same for a `ComputeOp`
+and a `ComputeExpr` against the `Op` that `toAlgorithm?` returns. The three
+theorems cover 110 constructors of `Op`, the 5 of `ComputeOp` and 4 of
+`ComputeExpr`. The other 3 of `Op` (`castRealToInt8`, `argMin`, `sort`) are
+excluded by a precondition, and the other 3 of `ComputeExpr` (`opaque`,
+`llrint`, `isFinite`) have no projection. The header of `EvalOp.lean` lists
+every constructor. The 16 constructors that I4.1 left open are among the 110,
+except the three excluded ones: `load` with its three address forms, three
+mask forms and both paddings; `decodeFloat8E5`; `reshape`; `rand`,
+`randTensor`, `philox4x32`; `ptrBase`, the four `makeBlockPtr` forms and the
+two `advanceBlockPtr` forms. `argMaxTyped` is covered with and without a
+precision override.
+
+A row of the table above marked "checked" is therefore proved as well, except
+`atomicAdd`, which is a statement.
 
 ### `erase`
 
@@ -188,9 +215,75 @@ the carrier.
 
 D3, D4, D6, D7 and D9 to D12 have the same form: structural execution fails
 and the proof side may succeed. One semantic conjunct, "structural execution
-of `ck` from `s` succeeds", would cover all of them at once (inferred; the
-choice between it and syntactic conjuncts belongs to I4.2). It does not cover
-D1, D5, D8 and D13, where structural execution succeeds.
+of `ck` from `s` succeeds", would cover all of them at once (inferred). It
+does not cover D1, D5, D8 and D13, where structural execution succeeds.
+
+### Preconditions in Lean
+
+I4.2 defined one named predicate for each difference that an expression can
+meet, in `VeriTile/Interp/Bridge/EvalOp.lean`. `BridgeSite s e` is their
+conjunction at one node `e` evaluated in the state `s`; `AllNodes P e` states
+`P` at every node of `e`, including the addresses, masks and `other` values of
+its loads and its dynamic offset lists.
+
+| Id | Predicate | Constrains | What it says | Mark |
+| --- | --- | --- | --- | --- |
+| D1 | `CellFinite d c`, used by `LoadOk` | A cell that an active, in-bounds lane of a load reads at dtype `d` | If the cell is tagged `d`, its value is one the proof semantics keeps in memory: `storedValue d v = toCarrier d v`, which fails only for a floating `⊥` | proved sufficient; an example shows the sides differ on a `.real` cell holding `⊥` |
+| D3, D4 | `StructuralNode e` | The node | The node is not `castRealToInt8`, `argMin` or `sort` | proved sufficient |
+| D5 | `DecodesFinite s e` | The bytes a `decodeFloat8E5` node decodes in `s` | Every byte that is a valid `int8` has a rational value. An invalid byte makes both sides fail and needs no condition | proved sufficient |
+| D6 | `NonEmptyArgMax e` | The node | The axis of an `argMax` or `argMaxTyped` has a non-zero dimension | proved sufficient |
+| D7 | `ReshapeSameSize e` | The node | The input and output shapes of a `reshape` have the same product | proved sufficient |
+| D8 | `UndefAgrees s d masked r o`, used by `LoadOk` | The undefined-value tables of `s` at the address of a lane that takes an undefined value | `s.undef d r o` is the dtype default when the lane is masked off and `d` is discrete, and `(erase s).unspecifiedValue d r o` otherwise | proved sufficient |
+| D9, D10 | `SupportedCompute c`, `SupportedExpr e` | The compute operation | No `fp64` constant, no `fp64` load, and every bitcast goes from `int32` or `uint32` to `fp32` | proved sufficient; examples show the sides differ on an `fp64` constant and on an `fp64` load |
+| D13 | `CellTagged d c`, used by `LoadOk` | A cell that an active, in-bounds lane of a load reads at dtype `d` | If `d` is floating, the cell is tagged `d` | proved sufficient; an example shows the sides differ on a `.real` load of a cell tagged `.fp32` |
+
+`LoadOk s e` states D1, D8 and D13 for a `load`, lane by lane, on the
+addresses and the mask that structural evaluation computes in `s`:
+
+- an active in-bounds lane reads a cell that is `CellFinite` and `CellTagged`;
+- an active out-of-bounds lane under unspecified padding satisfies
+  `UndefAgrees` with `masked = false`;
+- a masked-off lane of a load with a mask and no `other` satisfies
+  `UndefAgrees` with `masked = true`, unless it is out of bounds under zero
+  padding;
+- a lane that takes `other`, or zero padding, needs nothing: both sides take
+  the same value, `⊥` included (proved).
+
+Only a block-pointer load has out-of-bounds lanes. `LoadOk`, `DecodesFinite`
+and `UndefAgrees` quantify over the precision context, because structural
+evaluation takes one; every field of `realAlgebra` ignores it (read).
+
+Decisions taken by I4.2:
+
+- **Syntactic conjuncts for D3, D4, D6, D7, D9 and D10.** They depend on the
+  kernel only, so they hold in every state of an execution and can be checked
+  once, and they keep the bridge an equation: under them the two sides also
+  fail together, for example on a missing register, an invalid random input or
+  an empty `reduceMax` axis. The semantic conjunct would make the failure half
+  of the statement empty and would leave "the proof side succeeds, so
+  structural execution succeeds" unproved. Its cost: a kernel that has an
+  unsupported construct in a branch it never takes is excluded. D11 and D12
+  are open to the same choice in I4.3.
+- **D1 and D13 are per load and per lane**, not conditions on the whole
+  memory: D13 cannot be stated without the address and the dtype of the read.
+  A condition on the initial state alone is not enough, because a store
+  changes cells; I4.3 has to state them along the execution or prove an
+  invariant.
+- **D8 is exact.** A masked-off discrete lane and an unspecified-padding
+  discrete lane ask different values of the same table entry (the default,
+  and the floor of the real value). The predicate takes which of the two the
+  lane is. A table that is `some 0` on the floating dtypes and the default on
+  the discrete ones satisfies both (proved, as an example).
+- **D10 is recursive.** A bitcast from `int32` or `uint32` to `fp32` whose
+  operand is itself a bitcast is excluded through its operand: structural
+  execution fails on the inner one and the projection composes the two
+  payloads (proved that the precondition excludes it; read that the sides
+  differ).
+- `CellFinite` and `CellTagged` are the weakest forms found: a discrete read
+  of a mistagged cell, and a read at another dtype of a cell holding `⊥`,
+  agree and are not excluded (proved).
+
+No difference beyond D1 to D13 was found at the level of expressions.
 
 D1, D8 and D13 are conditions on the state as well as on the kernel. For an
 initial state whose memory holds finite values under the dtype the kernel
@@ -230,22 +323,15 @@ return the state unchanged (read).
 
 ### Agreement that still needs a lemma
 
-Both sides were read and look equal; no proof was run (inferred):
+I4.2 proved the expression items of this list: `Op.load` in general, `rand`,
+`randTensor` and `philox4x32`, `reshape` on equal sizes, pointers and block
+pointers with their dynamic lists, compute constants and loads of dtype
+`int32` and `uint32`, and the bitcast of an `int32` or `uint32` constant to
+`fp32`.
 
-- `Op.load` in general. The cell-level facts are checked (D1, D13, and the
-  two readings of one cell); the three address forms, the three mask forms
-  and the padding rule were only read. With `other`, a masked-off lane takes
-  the value of `other` on both sides, `⊥` included;
-- `rand`, `randTensor` (through `Random.rand_toRat_randRat`) and `philox4x32`
-  (both sides call `Random.Direct.evalField`);
-- `Op.reshape` on equal sizes: `reshapeIndex` is the successful lookup of
-  `Tile.reshape`;
-- pointers and block pointers: `ptrBase`, the `makeBlockPtr` forms, the
-  `advanceBlockPtr` forms, and the dynamic lists (`evalOffsets` and
-  `evalDeltas` against `List.mapM`);
-- compute constants and loads of dtype `int32` and `uint32`; the bitcast of
-  an `int32` or `uint32` constant to `fp32`, which needs
-  `BitVec.ofInt 32 c.toInt = c.bits`;
+What remains is about statements. Both sides were read and look equal; no
+proof was run (inferred):
+
 - stores through a pointer or a block pointer, atomic adds beyond the kernel
   that was checked, and the three loop forms and two conditionals: the folds
   have the same shape as the masked store that was checked.
@@ -280,6 +366,14 @@ Both sides were read and look equal; no proof was run (inferred):
 - `BridgePre` therefore needs conjuncts about the initial state (D1, D8,
   D13), and the corollary of I4.3 speaks about initial states with finite
   memory (inferred).
+- As far as expressions show, `BridgePre ck s` needs, for every expression `e`
+  of `ck` with projection `op`: `SupportedExpr e` (D9, D10), once; and
+  `AllNodes (BridgeSite s') op` in every state `s'` in which structural
+  execution evaluates it, which holds D3 to D7 for the kernel and D1, D5, D8
+  and D13 for that state. The address, mask and value expressions of stores
+  and atomic adds and the conditions and bounds of control flow are
+  expressions too. I4.3 adds D11 and D12, and D1 and D13 for the cell an
+  atomic add reads (inferred).
 - Nothing found here shows that the statement cannot hold. Every remaining
   difference has a side condition that a kernel without the constructs of D3
   to D12, run from a finite and correctly tagged memory, satisfies (inferred).
