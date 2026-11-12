@@ -8,9 +8,10 @@ Every declaration here is a stub: an `opaque` constant or a definition with a
 definition with the same name and type in `VeriTile/Interp/`, and the stub is
 deleted here. Already replaced: the mirror AST with `QKernel.toReal`
 (`VeriTile.Interp.Mirror`, I1.1) and `State` with `State.lift`
-(`VeriTile.Interp.State`, I2.1), and `CAlgebra` with `CAlgebra.lift`
-(`VeriTile.Interp.Algebra`, I2.2). `documents/InterpInterface.md` states the
-intended meaning of each name.
+(`VeriTile.Interp.State`, I2.1), `CAlgebra` with `CAlgebra.lift`
+(`VeriTile.Interp.Algebra`, I2.2), and `erase` with `realAlgebra`
+(`VeriTile.Interp.Bridge.RealAlgebra`, I4.1). `documents/InterpInterface.md`
+states the intended meaning of each name.
 -/
 import VeriTile.Triton
 import VeriTile.Triton.Float.Structural
@@ -27,9 +28,5 @@ open VeriTile.Triton.FP
 execution failure. -/
 opaque interp {α : Type} [Inhabited α] (M : CAlgebra α) (kq : QKernel) (s : State α) :
     Option (State α)
-
-/-- Stub (I4.1). Forgets dtype tags: the state of the proof semantics
-that a real-carrier structural state stands for. -/
-opaque erase : Structural.State ℝ → BlockState
 
 end VeriTile.Interp

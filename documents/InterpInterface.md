@@ -1,8 +1,9 @@
 # Interpreter interface
 
 Status: frozen by ticket I0.1 and signed on 2026-11-11; the fingerprints are in
-`documents/dist/FrozenStatements.tsv`. The Lean side lives in
-`VeriTile/Staging/Interp/`; nothing here is a proved result yet.
+`documents/dist/FrozenStatements.tsv`. The bridge statement was signed again on
+2026-11-12 with the carrier `WithBot ℝ` in place of `ℝ` (ticket I4.1). The Lean
+side lives in `VeriTile/Staging/Interp/`; nothing here is a proved result yet.
 
 The interpreter line builds one executable definition of kernel execution and
 connects it to the semantics the theorems are about:
@@ -33,9 +34,9 @@ the main target, and deletes the stub in the same change.
 | `State α` | `Type` | Executable state: registers, finite-map memory of typed cells, program ids, grid sizes, undefined-value table | I2.1 |
 | `State.lift` | `State α → FP.Structural.State α` | The function-valued state that the executable state represents | I2.1 |
 | `interp` | `[Inhabited α] → CAlgebra α → QKernel → State α → Option (State α)` | Executes one program instance; `none` is execution failure | I2.4 |
-| `erase` | `FP.Structural.State ℝ → BlockState` | Forgets dtype tags: the state of the proof semantics that a real-carrier state stands for | I4.1 |
-| `realAlgebra` | `FP.Structural.Algebra ℝ` | Literals as given, real arithmetic, casts and rounding as identity | I4.1 |
-| `BridgePre` | `ComputeKernel → FP.Structural.State ℝ → Prop` | The named side conditions under which the two execution definitions agree | I4.2 |
+| `erase` | `FP.Structural.State (WithBot ℝ) → BlockState` | The state of the proof semantics that a structural state over `WithBot ℝ` stands for | I4.1 |
+| `realAlgebra` | `FP.Structural.Algebra (WithBot ℝ)` | Literals as given, the real evaluator's arithmetic on `WithBot ℝ` with `⊥` for `-inf`, casts and rounding as identity | I4.1 |
+| `BridgePre` | `ComputeKernel → FP.Structural.State (WithBot ℝ) → Prop` | The named side conditions under which the two execution definitions agree | I4.2 |
 
 `interp` executes one program instance of a launch, as `FP.Structural.exec`
 does. Looping over the program ids of a grid belongs to the runner (I7.2).
@@ -58,23 +59,25 @@ Bridge (`VeriTile/Staging/Interp/Bridge.lean`, proved by I4.3):
 
 ```lean
 theorem bridge_exec {ck : ComputeKernel} {ak : AlgKernel}
-    (s : FP.Structural.State ℝ)
+    (s : FP.Structural.State (WithBot ℝ))
     (h : ck.toAlgorithm? = .ok ak) (pre : BridgePre ck s) :
     (FP.Structural.exec realAlgebra ck s).map erase = exec ak (erase s)
 ```
 
 For a source kernel whose dtype-erasing projection succeeds, structural
-execution over the reals agrees with the proof semantics after erasure. The
-statement covers only kernels whose projection succeeds.
+execution over `WithBot ℝ` agrees with the proof semantics after erasure. The
+statement covers only kernels whose projection succeeds. The carrier is
+`WithBot ℝ` and not `ℝ` because the proof semantics represents `-inf` by a
+bottom element, which a register can hold and no real number can stand for.
 
 `BridgePre` is part of the statement on purpose. Differences between the two
-definitions (propagation of `⊥`, undefined values and `other`, missing backend
-support, constructs whose projection fails) are expected to surface during the
-proof. Each one becomes a named conjunct of `BridgePre` and an entry in
-`documents/BridgeTheoremDifferences.md`, so the theorem's wording stays as
-frozen and the conditions are reviewed where they are defined. `BridgePre` must
-not be strengthened to something no bench kernel satisfies: I4.3 ships a
-kernel and a state that satisfy it.
+definitions (a `⊥` in a memory cell, undefined values, constructs that
+structural execution rejects, constructs whose projection fails) are expected
+to surface during the proof. Each one becomes a named conjunct of `BridgePre`
+and an entry in `documents/BridgeTheoremDifferences.md`, so the theorem's
+wording stays as frozen and the conditions are reviewed where they are defined.
+`BridgePre` must not be strengthened to something no bench kernel satisfies:
+I4.3 ships a kernel and a state that satisfy it.
 
 What the two statements do not say:
 
