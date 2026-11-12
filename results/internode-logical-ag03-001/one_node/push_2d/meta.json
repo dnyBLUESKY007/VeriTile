@@ -1,0 +1,60 @@
+{
+  "distinct": {
+    "rank0/gathered": {
+      "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f": 2
+    },
+    "rank0/topology": {
+      "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea": 2
+    },
+    "rank1/gathered": {
+      "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f": 2
+    },
+    "rank1/topology": {
+      "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a": 2
+    }
+  },
+  "inputs": {
+    "x": {
+      "expected_sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f",
+      "match": true,
+      "sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f"
+    }
+  },
+  "launcher": "triton-dist",
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/gathered": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f",
+        "rank0/topology": "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea",
+        "rank1/gathered": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f",
+        "rank1/topology": "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 21.002
+    },
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/gathered": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f",
+        "rank0/topology": "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea",
+        "rank1/gathered": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f",
+        "rank1/topology": "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 15.944
+    }
+  ],
+  "status": "ok",
+  "wall_time_s": 36.946
+}

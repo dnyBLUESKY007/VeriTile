@@ -1,0 +1,22 @@
+== repeat 0 ==
+W1113 06:17:13.224000 3152394 torch/distributed/run.py:774] 
+W1113 06:17:13.224000 3152394 torch/distributed/run.py:774] *****************************************
+W1113 06:17:13.224000 3152394 torch/distributed/run.py:774] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1113 06:17:13.224000 3152394 torch/distributed/run.py:774] *****************************************
+/data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py:4807: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+[rank0]:[W1113 06:17:16.966845727 ProcessGroupNCCL.cpp:5023] [PG ID 1 PG GUID 1 Rank 0]  using GPU 0 as device used by this process is currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect. You can specify device_id in init_process_group() to force use of a particular device.
+/data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py:4807: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+[rank1]:[W1113 06:17:16.967526557 ProcessGroupNCCL.cpp:5023] [PG ID 1 PG GUID 1 Rank 1]  using GPU 1 as device used by this process is currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect. You can specify device_id in init_process_group() to force use of a particular device.
+== repeat 1 ==
+W1113 06:17:34.455000 3152890 torch/distributed/run.py:774] 
+W1113 06:17:34.455000 3152890 torch/distributed/run.py:774] *****************************************
+W1113 06:17:34.455000 3152890 torch/distributed/run.py:774] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1113 06:17:34.455000 3152890 torch/distributed/run.py:774] *****************************************
+/data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py:4807: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py:4807: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+[rank1]:[W1113 06:17:37.251109516 ProcessGroupNCCL.cpp:5023] [PG ID 1 PG GUID 1 Rank 1]  using GPU 1 as device used by this process is currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect. You can specify device_id in init_process_group() to force use of a particular device.
+[rank0]:[W1113 06:17:37.251193956 ProcessGroupNCCL.cpp:5023] [PG ID 1 PG GUID 1 Rank 0]  using GPU 0 as device used by this process is currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect. You can specify device_id in init_process_group() to force use of a particular device.

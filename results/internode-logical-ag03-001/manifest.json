@@ -1,0 +1,16 @@
+{
+  "batch_id": "internode-logical-ag03-001",
+  "env_mismatch": [],
+  "finished": "2026-11-12T22:20:30Z",
+  "limits_exceeded": [],
+  "mode": "dist",
+  "protocol": 1,
+  "request_commit": "4e9a91a52577f00649442e2454b8bb51cbab42a7",
+  "started": "2026-11-12T22:16:30Z",
+  "tests": {
+    "logical_nodes/push_1d": "ok",
+    "logical_nodes/push_2d": "ok",
+    "one_node/push_1d": "ok",
+    "one_node/push_2d": "ok"
+  }
+}
