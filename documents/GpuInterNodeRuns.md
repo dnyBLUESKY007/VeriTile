@@ -4,6 +4,8 @@
 
 Issue: [#353](https://github.com/dnyBLUESKY007/VeriTile/issues/353). Inspection date: 2026-11-10; logical-node launcher added on 2026-11-12. Status: source inspection complete; a launcher that starts two logical nodes on the one host and its first request, `internode-logical-env-001`, are written and have not run on a GPU. Of the two outcomes the issue allows, neither holds yet: no second sm_90 node is arranged for the H800 host, and the recorded check that the inter-node code paths run on that host awaits the GPU side. This document states what such a run exercises and what it does not, and names the batches.
 
+**Decision (user, 2026-11-12).** No second physical node will be arranged: the collaborator's cluster is no longer available. Inter-node programs are tested only as logical nodes on the one host. Transport between hosts (network cards, RDMA) is outside the scope of the project: the model has ranks and scopes, not nodes or links, so a proof does not depend on it. If logical nodes cannot be made to run, the inter-node code paths are proved and reported as not run.
+
 ## Hardware and scope
 
 The inspected host exposes six H800 PCIe GPUs, all compute capability 9.0. NVLink pairs are 0–1, 2–3 and 4–5. Only two GPUs are intended for each distributed request; the local environment checks used the then-idle 4–5 pair. A device selection is not a resource reservation and occupancy must be rechecked before a run.

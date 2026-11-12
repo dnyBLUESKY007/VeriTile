@@ -16,5 +16,6 @@ import VeriTile.Interp.Enum
 import VeriTile.Interp.EvalOp
 import VeriTile.Interp.Mirror
 import VeriTile.Interp.Numeric
+import VeriTile.Interp.Reflect
 import VeriTile.Interp.State
 import VeriTile.Interp.Run.TensorIO

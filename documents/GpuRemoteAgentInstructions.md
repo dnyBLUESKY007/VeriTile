@@ -18,11 +18,12 @@ You operate one GPU node (H800, sm_90; each request uses at most one NVLink pair
 ## One-time setup
 
 1. Clone `https://github.com/dnyBLUESKY007/VeriTile` into a working directory. Check that `gh auth status` shows an account with push access to it.
-2. Create four Python environments, named exactly:
+2. Create five Python environments, named exactly:
    - `triton`: Python, PyTorch, Triton `3.5.1`.
    - `triton-dist`: Triton-distributed built from source at commit `7908e4e` with its bundled Triton, NVSHMEM and an MPI launcher.
    - `tilelang`: TileLang built from source at commit `35850c0`.
    - `tilescale`: TileScale built from source at commit `71e7145`. It provides its own `tilelang` import name, so it is never installed beside TileLang.
+   - `tilescale-deepep`: TileScale built from source at commit `9ba8a605d347f600a95d0275e2639cb00122c084` (branch `wt/deepep-internode`), separate from `tilescale`. It holds the DeepEP version 1 port.
 3. If a version cannot be installed as pinned, install nothing in its place. Report which pin failed and the error.
 4. If the branch `gpu-results` does not exist, create it as an orphan branch with one empty commit and push it.
 5. Post a comment on the issue titled `[I9.1] Exchange protocol v1: document, user check, GPU-side dry run` with: GPU model and count, compute capability, driver, CUDA toolkit, OS release, and for each environment the Python, PyTorch, Triton, TileLang, TileScale, Triton-distributed and NVSHMEM versions that apply. Say whether the two GPUs are connected by NVLink.

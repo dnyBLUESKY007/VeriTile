@@ -119,6 +119,11 @@ class Gpurun(unittest.TestCase):
         self.assertEqual(environment.mismatches({'sm': 90, 'gpus': 2, 'env': 'tilescale'}, h800), [])
         self.assertEqual(environment.mismatches({'sm': 90, 'gpus': 1, 'env': 'triton'}, h800), [])
         self.assertEqual(len(environment.mismatches({'env': 'tilelang'}, h800)), 1)
+        # Same module name, different commit: the two TileScale environments never stand in for each other.
+        self.assertEqual(len(environment.mismatches({'env': 'tilescale-deepep'}, h800)), 1)
+        deepep = {**h800, 'versions': {'tilelang': '0.1.7.post1+cuda.git9ba8a605'}}
+        self.assertEqual(environment.mismatches({'sm': 90, 'gpus': 2, 'env': 'tilescale-deepep'}, deepep), [])
+        self.assertEqual(len(environment.mismatches({'env': 'tilescale'}, deepep)), 1)
         self.assertEqual(len(environment.mismatches({'env': 'triton-dist'}, h800)), 1)
         self.assertEqual(len(environment.mismatches({'sm': 90, 'gpus': 3}, h800)), 1)
         self.assertEqual(len(environment.mismatches({'sm': 100, 'gpus': 1}, h800)), 1)
