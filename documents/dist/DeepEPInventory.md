@@ -37,10 +37,13 @@ Each claim carries one of three marks:
 3. **Recommended source.** The TileScale port at `9ba8a605` for the proof, with
    DeepEP at `b57e5e21` as the reference it was written and tested against
    (section 6).
-4. **GPU run.** The recommended source cannot run in an installed environment:
-   the `tilescale` environment is built from `main` at `71e71457`, where two
-   names the port needs do not exist. No run request was written. Section 7
-   says exactly what is missing.
+4. **GPU run.** The recommended source cannot run in the `tilescale`
+   environment, built from `main` at `71e71457`, where two names the port
+   needs do not exist. The GPU side built the environment `tilescale-deepep`
+   from `9ba8a605` on 2026-11-12; it reports `tilelang` version
+   `0.1.7.post1+cuda.git9ba8a605`. The first request,
+   `deepep-v1-intranode-001`, is written (K-D.17) and has not run. Section 7
+   says how it meets each need and what only a run can settle.
 5. **Specification.** The frozen MoE declarations hold for version 1 normal
    mode as far as they go, but they leave out or weaken six things that
    version 1 fixes (section 8).
@@ -879,6 +882,5 @@ capacity of the ring buffers have no counterpart in the specification.
 - The bodies of `ep_a2a.py`, `ep_all2all_fused.py`, the `low_latency_*` files
   and tutorial 04 beyond the kernel named in section 3.3 were not read; their
   rows in section 5 are the scanner's output.
-- The version string that an environment built from `9ba8a605` would report.
 - The commit dates in section 2 are the dates git reports; the DeepEP history
   was not checked against release notes.
