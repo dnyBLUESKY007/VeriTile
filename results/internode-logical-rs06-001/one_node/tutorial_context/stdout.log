@@ -1,0 +1,32 @@
+== repeat 0 ==
+Found NVSHMEM_HOME from environment variable: /data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/nvidia/nvshmem
+TRITON_PLUGIN_PATHS=/data0/<user>/workspace/.local/veritile/gpu-node/src/triton-distributed/python/triton_dist/lib/libtriton_dist.so
+TRITON_PLUGIN_PATHS=/data0/<user>/workspace/.local/veritile/gpu-node/src/triton-distributed/python/triton_dist/lib/libtriton_dist.so
+Found NVSHMEM_HOME from environment variable: /data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/nvidia/nvshmem
+NCCL_SOCKET_IFNAME=enp34s0f0
+[0;33m[1m⚠️ WARNING: [0m[1m[0m NVSHMEM and NCCL use the different socket interface. force set NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME(eth0) to NCCL_SOCKET_IFNAME(enp34s0f0) instead...
+torchrun --node_rank=0 --nproc_per_node=2 --nnodes=1 --rdzv_endpoint=<loopback>:23456 -m gpurun _rank /data0/<user>/workspace/.local/veritile/gpu-node/tmp/gpurun-gy5u_8g9
+[Gloo] Rank [Gloo] Rank 10 is connected to  is connected to 11 peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : 11
+
+rank 1 of 2: LOCAL_WORLD_SIZE=2 nodes=1 LOCAL_RANK=1 device=1
+rank 0 of 2: LOCAL_WORLD_SIZE=2 nodes=1 LOCAL_RANK=0 device=0
+rank 1: context tutorial, barrier local rank 1 of 2, native atomics 1rank 0: context tutorial, barrier local rank 0 of 2, native atomics 1
+
+rank 1: reduce_scatter_2d_op returnedrank 0: reduce_scatter_2d_op returned
+
+== repeat 1 ==
+Found NVSHMEM_HOME from environment variable: /data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/nvidia/nvshmem
+TRITON_PLUGIN_PATHS=/data0/<user>/workspace/.local/veritile/gpu-node/src/triton-distributed/python/triton_dist/lib/libtriton_dist.so
+TRITON_PLUGIN_PATHS=/data0/<user>/workspace/.local/veritile/gpu-node/src/triton-distributed/python/triton_dist/lib/libtriton_dist.so
+Found NVSHMEM_HOME from environment variable: /data0/<user>/workspace/.local/veritile/gpu-node/envs/triton-dist/lib/python3.11/site-packages/nvidia/nvshmem
+NCCL_SOCKET_IFNAME=enp34s0f0
+[0;33m[1m⚠️ WARNING: [0m[1m[0m NVSHMEM and NCCL use the different socket interface. force set NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME(eth0) to NCCL_SOCKET_IFNAME(enp34s0f0) instead...
+torchrun --node_rank=0 --nproc_per_node=2 --nnodes=1 --rdzv_endpoint=<loopback>:23456 -m gpurun _rank /data0/<user>/workspace/.local/veritile/gpu-node/tmp/gpurun-gy5u_8g9
+[Gloo] Rank [Gloo] Rank 10 is connected to  is connected to 11 peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : 11
+
+rank 1 of 2: LOCAL_WORLD_SIZE=2 nodes=1 LOCAL_RANK=1 device=1
+rank 0 of 2: LOCAL_WORLD_SIZE=2 nodes=1 LOCAL_RANK=0 device=0
+rank 1: context tutorial, barrier local rank 1 of 2, native atomics 1
+rank 0: context tutorial, barrier local rank 0 of 2, native atomics 1
+rank 0: reduce_scatter_2d_op returnedrank 1: reduce_scatter_2d_op returned
+

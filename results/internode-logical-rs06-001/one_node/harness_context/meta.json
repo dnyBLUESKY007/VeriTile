@@ -1,0 +1,70 @@
+{
+  "distinct": {
+    "rank0/barrier": {
+      "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505": 2
+    },
+    "rank0/reduced": {
+      "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e": 2
+    },
+    "rank0/topology": {
+      "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea": 2
+    },
+    "rank1/barrier": {
+      "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a": 2
+    },
+    "rank1/reduced": {
+      "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025": 2
+    },
+    "rank1/topology": {
+      "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a": 2
+    }
+  },
+  "inputs": {
+    "x": {
+      "expected_sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30",
+      "match": true,
+      "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+    }
+  },
+  "launcher": "triton-dist",
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/barrier": "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505",
+        "rank0/reduced": "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e",
+        "rank0/topology": "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea",
+        "rank1/barrier": "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a",
+        "rank1/reduced": "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025",
+        "rank1/topology": "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 15.373
+    },
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/barrier": "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505",
+        "rank0/reduced": "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e",
+        "rank0/topology": "c2bf7c2ceecc16878b4f9542925c1cf8507ebd02fa5c093e50e780502627c3ea",
+        "rank1/barrier": "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a",
+        "rank1/reduced": "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025",
+        "rank1/topology": "d2b1d244300cb5bd76a0f62c073e56cbc476fa8042133a2e4281d403f339e05a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 15.094
+    }
+  ],
+  "status": "ok",
+  "wall_time_s": 30.467
+}

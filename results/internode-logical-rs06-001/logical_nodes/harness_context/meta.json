@@ -1,0 +1,73 @@
+{
+  "distinct": {
+    "rank0/barrier": {
+      "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505": 2
+    },
+    "rank0/reduced": {
+      "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e": 2
+    },
+    "rank0/topology": {
+      "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03": 2
+    },
+    "rank1/barrier": {
+      "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a": 2
+    },
+    "rank1/reduced": {
+      "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025": 2
+    },
+    "rank1/topology": {
+      "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944": 2
+    }
+  },
+  "inputs": {
+    "x": {
+      "expected_sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30",
+      "match": true,
+      "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+    }
+  },
+  "launcher": "triton-dist-logical-nodes",
+  "local_ranks": 1,
+  "logical_nodes": 2,
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/barrier": "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505",
+        "rank0/reduced": "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e",
+        "rank0/topology": "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03",
+        "rank1/barrier": "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a",
+        "rank1/reduced": "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025",
+        "rank1/topology": "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 44.944
+    },
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/barrier": "64bc827115e6650f9bbc49019dfedac2638ac724ab4a3af75dfd318f39a62505",
+        "rank0/reduced": "2304abd51415be6d642438541508bc1f3f3f23067fcc556891218aeecc94721e",
+        "rank0/topology": "5eea2881e4d0435fb748a5f50a22990a40b1181cbd057d9674259f13183bbe03",
+        "rank1/barrier": "f86f1342fd47e8b38e1551eb55db5bf1673e0701a1692401ea7bf4b2603e748a",
+        "rank1/reduced": "4e7ad0d6524f9fe55e0ea17e48d319f1cb14d63db2cbd7298022a4c972d64025",
+        "rank1/topology": "0064b1ab788146c540581f648d5ad9e5420f45425a9896b2d54444825d146944"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 38.331
+    }
+  ],
+  "status": "ok",
+  "topology": "logical-nodes",
+  "wall_time_s": 83.275
+}

@@ -1,0 +1,30 @@
+{
+  "distinct": {},
+  "inputs": {
+    "x": {
+      "expected_sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30",
+      "match": true,
+      "sha256": "3e462e52ca7151334d565711535a71b17a32dbfb8661ddccd3c1770c0fb15a30"
+    }
+  },
+  "launcher": "triton-dist-logical-nodes",
+  "local_ranks": 1,
+  "logical_nodes": 2,
+  "ranks": 2,
+  "repeats": 1,
+  "runs": [
+    {
+      "exit_code": null,
+      "outputs": {},
+      "rank_status": [
+        null,
+        "runtime_error"
+      ],
+      "status": "timeout",
+      "wall_time_s": 239.856
+    }
+  ],
+  "status": "timeout",
+  "topology": "logical-nodes",
+  "wall_time_s": 239.856
+}
