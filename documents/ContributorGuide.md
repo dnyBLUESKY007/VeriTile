@@ -10,7 +10,7 @@ For everyone who works on a ticket of `dnyBLUESKY007/VeriTile` outside the coord
 
 ## How tickets are given out
 
-**Assigned tickets.** A ticket with a section `## Assignment` belongs to the GitHub login named there. The coordinator assigns under these rules:
+**Assigned tickets.** A ticket with a section `## Assignment` is assigned. Who it belongs to is in the assignee field, or, until that person has accepted, in the coordinator's assignment comment on the ticket; ticket descriptions name no person. The coordinator assigns under these rules:
 
 1. Only tickets whose dependencies are merged, that are specified to the level of files, deliverable and acceptance, and that reserve no decision for the user.
 2. Evenly: the sizes of the open tickets of each contributor (the `Size` line, in agent-days) are kept as equal as the ticket sizes allow. A new ticket goes to whoever has the least open work.
