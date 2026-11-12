@@ -1,0 +1,302 @@
+{
+  "protocol": 1,
+  "batch_id": "deepep-v1-intranode-001",
+  "mode": "dist",
+  "supersedes": null,
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "tilescale-deepep"
+  },
+  "timeout_s": 1800,
+  "tests": [
+    {
+      "id": "intranode/identity",
+      "frontend": "tilescale",
+      "entry": "experiments/interp_gpu/deepep_v1/harness.py::run",
+      "launch": {
+        "num_experts": 8,
+        "scale": [
+          1,
+          1
+        ]
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "bf16",
+          "shape": [
+            2,
+            40,
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "ad55c0f8c0e371a6708b0122e0c00e93d3ec24b16f32a4f204e6eb2b5b2d7a2b"
+        },
+        {
+          "name": "topk_idx",
+          "dtype": "int64",
+          "shape": [
+            2,
+            40,
+            2
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 34630,
+            "low": -1,
+            "high": 7
+          },
+          "sha256": "af02a5819caf1e777f3a0863994a83f2e5968fe1b0b52555ac3fcbd7590dc6b0"
+        },
+        {
+          "name": "topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            2,
+            40,
+            2
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "8c3d8e83a80a512b9e54d786610923a1c898e4635944d4835d3529869e1fb0e6"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "is_token_in_rank",
+          "dtype": "uint8",
+          "shape": [
+            40,
+            2
+          ],
+          "sentinel": "0xad"
+        },
+        {
+          "name": "num_tokens_per_rank",
+          "dtype": "int32",
+          "shape": [
+            2
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "num_tokens_per_expert",
+          "dtype": "int32",
+          "shape": [
+            8
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "recv_x",
+          "dtype": "bf16",
+          "shape": [
+            80,
+            64
+          ],
+          "sentinel": "0x7fcd"
+        },
+        {
+          "name": "recv_src_idx",
+          "dtype": "int32",
+          "shape": [
+            80
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "recv_topk_idx",
+          "dtype": "int64",
+          "shape": [
+            80,
+            2
+          ],
+          "sentinel": "0x8000000000000000"
+        },
+        {
+          "name": "recv_topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            80,
+            2
+          ],
+          "sentinel": "0x7fc0dead"
+        },
+        {
+          "name": "combined_x",
+          "dtype": "bf16",
+          "shape": [
+            40,
+            64
+          ],
+          "sentinel": "0x7fcd"
+        },
+        {
+          "name": "combined_topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            40,
+            2
+          ],
+          "sentinel": "0x7fc0dead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "tilescale-deepep",
+      "repeats": 2
+    },
+    {
+      "id": "intranode/rank_weighted",
+      "frontend": "tilescale",
+      "entry": "experiments/interp_gpu/deepep_v1/harness.py::run",
+      "launch": {
+        "num_experts": 8,
+        "scale": [
+          1,
+          -0.5
+        ]
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "bf16",
+          "shape": [
+            2,
+            40,
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "ad55c0f8c0e371a6708b0122e0c00e93d3ec24b16f32a4f204e6eb2b5b2d7a2b"
+        },
+        {
+          "name": "topk_idx",
+          "dtype": "int64",
+          "shape": [
+            2,
+            40,
+            2
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 34630,
+            "low": -1,
+            "high": 7
+          },
+          "sha256": "af02a5819caf1e777f3a0863994a83f2e5968fe1b0b52555ac3fcbd7590dc6b0"
+        },
+        {
+          "name": "topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            2,
+            40,
+            2
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "8c3d8e83a80a512b9e54d786610923a1c898e4635944d4835d3529869e1fb0e6"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "is_token_in_rank",
+          "dtype": "uint8",
+          "shape": [
+            40,
+            2
+          ],
+          "sentinel": "0xad"
+        },
+        {
+          "name": "num_tokens_per_rank",
+          "dtype": "int32",
+          "shape": [
+            2
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "num_tokens_per_expert",
+          "dtype": "int32",
+          "shape": [
+            8
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "recv_x",
+          "dtype": "bf16",
+          "shape": [
+            80,
+            64
+          ],
+          "sentinel": "0x7fcd"
+        },
+        {
+          "name": "recv_src_idx",
+          "dtype": "int32",
+          "shape": [
+            80
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "recv_topk_idx",
+          "dtype": "int64",
+          "shape": [
+            80,
+            2
+          ],
+          "sentinel": "0x8000000000000000"
+        },
+        {
+          "name": "recv_topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            80,
+            2
+          ],
+          "sentinel": "0x7fc0dead"
+        },
+        {
+          "name": "combined_x",
+          "dtype": "bf16",
+          "shape": [
+            40,
+            64
+          ],
+          "sentinel": "0x7fcd"
+        },
+        {
+          "name": "combined_topk_weights",
+          "dtype": "fp32",
+          "shape": [
+            40,
+            2
+          ],
+          "sentinel": "0x7fc0dead"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "tilescale-deepep",
+      "repeats": 2
+    }
+  ]
+}
