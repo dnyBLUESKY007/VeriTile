@@ -1,0 +1,470 @@
+== repeat 0 ==
+Traceback (most recent call last):
+  File "<repo>/scripts/gpurun/run.py", line 233, in child_main
+    body(work)
+  File "<repo>/scripts/gpurun/dist.py", line 340, in rank_body
+    run.call_entry(test, root, test['entry'], inputs, work / 'run' / f'rank{rank}', rank, ranks)
+  File "<repo>/scripts/gpurun/run.py", line 207, in call_entry
+    function(*leading, {name: to_torch(t) for name, t in inputs.items()}, outputs, test.get('launch', {}))
+  File "<repo>/experiments/interp_gpu/deepep_v1/harness.py", line 62, in run
+    num_tokens_per_rank, num_tokens_per_expert, is_token_in_rank = buffer.get_dispatch_layout(topk_idx)
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/examples/distributed/deepseek_deepep/buffer.py", line 199, in get_dispatch_layout
+    num_tokens_per_rank, num_tokens_per_expert, is_token_in_rank = get_dispatch_layout(topk_idx, self.num_experts, self.num_ranks)
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/examples/distributed/deepseek_deepep/intranode/get_dispatch_layout.py", line 50, in get_dispatch_layout
+    kernel = get_dispatch_layout_kernel(num_topk, num_experts, num_ranks)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 424, in __call__
+    kernel = self.compile(*args, **kwargs, **tune_params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 359, in compile
+    kernel_result = compile(
+                    ^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 108, in compile
+    return cached(
+           ^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/cache/__init__.py", line 74, in cached
+    return _dispatch_map[execution_backend].cached(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/cache/kernel_cache.py", line 153, in cached
+    return JITKernel(
+           ^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/kernel.py", line 139, in __init__
+    adapter = self._compile_and_create_adapter(func, out_idx)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/kernel.py", line 247, in _compile_and_create_adapter
+    artifact = tilelang.lower(
+               ^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 288, in lower
+    codegen_mod = device_codegen(device_mod, target) if enable_device_compile else device_codegen_without_compile(device_mod, target)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 211, in device_codegen
+    device_mod = tvm.ffi.get_global_func(global_func)(device_mod, target)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "python/tvm_ffi/cython/function.pxi", line 923, in tvm_ffi.core.Function.__call__
+  File "<unknown>", line 0, in tvm::codegen::BuildTileLangCUDA(tvm::IRModule, tvm::Target)
+  File "python/tvm_ffi/cython/function.pxi", line 1077, in tvm_ffi.core.tvm_ffi_callback
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 127, in tilelang_callback_cuda_compile
+    ptx = nvcc.compile_cuda(
+    
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/contrib/nvcc.py", line 137, in compile_cuda
+    raise RuntimeError(msg)
+    
+RuntimeError: #include <tl_templates/cuda/gemm.h>
+#include <tl_templates/cuda/copy.h>
+#include <tl_templates/cuda/reduce.h>
+#include <tl_templates/cuda/ldsm.h>
+#include <tl_templates/cuda/threadblock_swizzle.h>
+#include <tl_templates/cuda/debug.h>
+#include <tl_templates/cuda/intrin.h>
+#include <tl_templates/cuda/distributed.h>
+#include <tl_templates/cuda/sync.h>
+#include <tl_templates/cuda/ldst.h>
+extern "C" __constant__ uint64_t meta_data[1024];
+#ifdef ENABLE_BF16
+#include <tl_templates/cuda/cuda_bf16_fallbacks.cuh>
+#endif
+
+extern "C" __global__ void get_dispatch_layout_main_kernel(signed char* __restrict__ is_token_in_rank, int* __restrict__ num_tokens_per_expert, int* __restrict__ num_tokens_per_rank, const int64_t* __restrict__ topk_idx, int num_tokens);
+extern "C" __global__ void __launch_bounds__(256, 1) get_dispatch_layout_main_kernel(signed char* __restrict__ is_token_in_rank, int* __restrict__ num_tokens_per_expert, int* __restrict__ num_tokens_per_rank, const int64_t* __restrict__ topk_idx, int num_tokens) {
+  extern __shared__ __align__(1024) uchar buf_dyn_shmem[];
+  int expert_begin_idx = 0;
+  int expert_end_idx = 0;
+  int sum = 0;
+  int expert_idx = 0;
+  int sm_begin = 0;
+  int rank_begin_idx = 0;
+  int rank_end_idx = 0;
+  int expert_begin = 0;
+  int expert_end = 0;
+  int sum_1 = 0;
+  int is_in_rank[8];
+  int expert_idx_1 = 0;
+  int rank_idx = 0;
+  *(int4*)(((int*)buf_dyn_shmem) + (((int)threadIdx.x) * 4)) = make_int4(0, 0, 0, 0);
+  expert_begin_idx = (((int)blockIdx.x) * 4);
+  expert_end_idx = min((expert_begin_idx + 4), 8);
+  __syncthreads();
+  if (expert_begin_idx < expert_end_idx) {
+    for (int _tmp = 0; _tmp < (((num_tokens + 255) - ((int)threadIdx.x)) >> 8); ++_tmp) {
+      for (int j = 0; j < 2; ++j) {
+        expert_idx = ((int)topk_idx[(((((int64_t)_tmp) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j))]);
+        if ((expert_begin_idx <= expert_idx) && (expert_idx < expert_end_idx)) {
+          ((int*)buf_dyn_shmem)[(((((int64_t)((int)threadIdx.x)) * (int64_t)4) + ((int64_t)expert_idx)) - ((int64_t)expert_begin_idx))] = (((int*)buf_dyn_shmem)[(((((int64_t)((int)threadIdx.x)) * (int64_t)4) + ((int64_t)expert_idx)) - ((int64_t)expert_begin_idx))] + 1);
+        }
+      }
+    }
+    __syncthreads();
+    if ((expert_begin_idx + ((int)threadIdx.x)) < expert_end_idx) {
+      sum = 0;
+      for (int i = 0; i < 256; ++i) {
+        sum = (sum + ((int*)buf_dyn_shmem)[((i * 4) + ((int)threadIdx.x))]);
+      }
+      if (0 <= (expert_begin_idx + ((int)threadIdx.x))) {
+        if ((expert_begin_idx + ((int)threadIdx.x)) < 8) {
+          num_tokens_per_expert[(expert_begin_idx + ((int)threadIdx.x))] = sum;
+        }
+      }
+    }
+  }
+  sm_begin = 2;
+  rank_begin_idx = ((((int)blockIdx.x) * 8) - (sm_begin * 8));
+  rank_end_idx = min((rank_begin_idx + 8), 2);
+  __syncthreads();
+  if ((0 <= rank_begin_idx) && (rank_begin_idx < rank_end_idx)) {
+    #pragma unroll
+    for (int i_1 = 0; i_1 < 2; ++i_1) {
+      *(int4*)(((int*)buf_dyn_shmem) + (((i_1 * 1024) + (((int)threadIdx.x) * 4)) + 1024)) = make_int4(0, 0, 0, 0);
+    }
+    expert_begin = (rank_begin_idx * 4);
+    expert_end = (rank_end_idx * 4);
+    __syncthreads();
+    for (int _tmp_1 = 0; _tmp_1 < (((num_tokens + 255) - ((int)threadIdx.x)) >> 8); ++_tmp_1) {
+      for (int i_2 = 0; i_2 < 2; ++i_2) {
+        *(int4*)(is_in_rank + (i_2 * 4)) = make_int4(0, 0, 0, 0);
+      }
+      for (int j_1 = 0; j_1 < 2; ++j_1) {
+        expert_idx_1 = ((int)topk_idx[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_1))]);
+        if ((expert_begin <= expert_idx_1) && (expert_idx_1 < expert_end)) {
+          rank_idx = ((expert_idx_1 >> 2) - rank_begin_idx);
+          is_in_rank[rank_idx] = (is_in_rank[rank_idx] + 1);
+        }
+      }
+      for (int j_2 = rank_begin_idx; j_2 < rank_end_idx; ++j_2) {
+        if (0 < is_in_rank[(((int64_t)j_2) - ((int64_t)rank_begin_idx))]) {
+          if (j_2 < 2) {
+            is_token_in_rank[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_2))] = (signed char)1;
+          }
+          ((int*)buf_dyn_shmem)[((((((int64_t)((int)threadIdx.x)) * (int64_t)8) + ((int64_t)j_2)) + (int64_t)1024) - ((int64_t)rank_begin_idx))] = (((int*)buf_dyn_shmem)[((((((int64_t)((int)threadIdx.x)) * (int64_t)8) + ((int64_t)j_2)) + (int64_t)1024) - ((int64_t)rank_begin_idx))] + 1);
+        } else {
+          if (j_2 < 2) {
+            is_token_in_rank[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_2))] = (signed char)0;
+          }
+        }
+      }
+    }
+    __syncthreads();
+    if ((rank_begin_idx + ((int)threadIdx.x)) < rank_end_idx) {
+      sum_1 = 0;
+      for (int i_3 = 0; i_3 < 256; ++i_3) {
+        sum_1 = (sum_1 + ((int*)buf_dyn_shmem)[(((i_3 * 8) + ((int)threadIdx.x)) + 1024)]);
+      }
+      if ((rank_begin_idx + ((int)threadIdx.x)) < 2) {
+        num_tokens_per_rank[(rank_begin_idx + ((int)threadIdx.x))] = sum_1;
+      }
+    }
+  }
+}
+
+
+Compilation error:
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(350): warning #549-D: variable "ret_val_x" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_x);
+                                               ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(352): warning #549-D: variable "ret_val_y" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_y);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(349): warning #550-D: variable "ret_val_x_cast" was set but never used
+      unsigned short ret_val_x_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(351): warning #550-D: variable "ret_val_y_cast" was set but never used
+      unsigned short ret_val_y_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(392): warning #549-D: variable "ret_val_x" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(394): warning #549-D: variable "ret_val_y" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_y);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(437): warning #549-D: variable "ret_val" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val.x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(436): warning #550-D: variable "ret_val_x_cast" was set but never used
+      unsigned short ret_val_x_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(438): warning #550-D: variable "ret_val_y_cast" was set but never used
+      unsigned short ret_val_y_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(477): warning #549-D: variable "ret_val" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val.x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(513): warning #550-D: variable "ret_val" was set but never used
+      float2 ret_val;
+             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(578): warning #550-D: variable "ret_val" was set but never used
+      float4 ret_val;
+             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(551): warning #20012-D: __device__ annotation is ignored on a function("float_e4m3_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(551): warning #20012-D: __host__ annotation is ignored on a function("float_e4m3_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                                                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(561): warning #20012-D: __device__ annotation is ignored on a function("float_e5m2_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(561): warning #20012-D: __host__ annotation is ignored on a function("float_e5m2_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                                                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/cuda_fp8.h(13): error: identifier "__nv_fp8_e8m0" is undefined
+  using fp8_e8_t = __nv_fp8_e8m0;
+                   ^
+
+1 error detected in the compilation of "/data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpateialcz/tvm_kernels.cu".
+
+Command: /usr/local/cuda-12.6/bin/nvcc --cubin -O3 -lineinfo -arch=sm_90a -std=c++17 -I/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src -I/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/cutlass/include -o /data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpateialcz/tvm_kernels.cubin /data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpateialcz/tvm_kernels.cu
+
+Traceback (most recent call last):
+  File "<repo>/scripts/gpurun/run.py", line 233, in child_main
+    body(work)
+  File "<repo>/scripts/gpurun/dist.py", line 340, in rank_body
+    run.call_entry(test, root, test['entry'], inputs, work / 'run' / f'rank{rank}', rank, ranks)
+  File "<repo>/scripts/gpurun/run.py", line 207, in call_entry
+    function(*leading, {name: to_torch(t) for name, t in inputs.items()}, outputs, test.get('launch', {}))
+  File "<repo>/experiments/interp_gpu/deepep_v1/harness.py", line 62, in run
+    num_tokens_per_rank, num_tokens_per_expert, is_token_in_rank = buffer.get_dispatch_layout(topk_idx)
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/examples/distributed/deepseek_deepep/buffer.py", line 199, in get_dispatch_layout
+    num_tokens_per_rank, num_tokens_per_expert, is_token_in_rank = get_dispatch_layout(topk_idx, self.num_experts, self.num_ranks)
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/examples/distributed/deepseek_deepep/intranode/get_dispatch_layout.py", line 50, in get_dispatch_layout
+    kernel = get_dispatch_layout_kernel(num_topk, num_experts, num_ranks)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 424, in __call__
+    kernel = self.compile(*args, **kwargs, **tune_params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 359, in compile
+    kernel_result = compile(
+                    ^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/__init__.py", line 108, in compile
+    return cached(
+           ^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/cache/__init__.py", line 74, in cached
+    return _dispatch_map[execution_backend].cached(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/cache/kernel_cache.py", line 153, in cached
+    return JITKernel(
+           ^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/kernel.py", line 139, in __init__
+    adapter = self._compile_and_create_adapter(func, out_idx)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/jit/kernel.py", line 247, in _compile_and_create_adapter
+    artifact = tilelang.lower(
+               ^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 288, in lower
+    codegen_mod = device_codegen(device_mod, target) if enable_device_compile else device_codegen_without_compile(device_mod, target)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 211, in device_codegen
+    device_mod = tvm.ffi.get_global_func(global_func)(device_mod, target)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "python/tvm_ffi/cython/function.pxi", line 923, in tvm_ffi.core.Function.__call__
+  File "<unknown>", line 0, in tvm::codegen::BuildTileLangCUDA(tvm::IRModule, tvm::Target)
+  File "python/tvm_ffi/cython/function.pxi", line 1077, in tvm_ffi.core.tvm_ffi_callback
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/engine/lower.py", line 127, in tilelang_callback_cuda_compile
+    ptx = nvcc.compile_cuda(
+    
+  File "/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/tilelang/contrib/nvcc.py", line 137, in compile_cuda
+    raise RuntimeError(msg)
+    
+RuntimeError: #include <tl_templates/cuda/gemm.h>
+#include <tl_templates/cuda/copy.h>
+#include <tl_templates/cuda/reduce.h>
+#include <tl_templates/cuda/ldsm.h>
+#include <tl_templates/cuda/threadblock_swizzle.h>
+#include <tl_templates/cuda/debug.h>
+#include <tl_templates/cuda/intrin.h>
+#include <tl_templates/cuda/distributed.h>
+#include <tl_templates/cuda/sync.h>
+#include <tl_templates/cuda/ldst.h>
+extern "C" __constant__ uint64_t meta_data[1024];
+#ifdef ENABLE_BF16
+#include <tl_templates/cuda/cuda_bf16_fallbacks.cuh>
+#endif
+
+extern "C" __global__ void get_dispatch_layout_main_kernel(signed char* __restrict__ is_token_in_rank, int* __restrict__ num_tokens_per_expert, int* __restrict__ num_tokens_per_rank, const int64_t* __restrict__ topk_idx, int num_tokens);
+extern "C" __global__ void __launch_bounds__(256, 1) get_dispatch_layout_main_kernel(signed char* __restrict__ is_token_in_rank, int* __restrict__ num_tokens_per_expert, int* __restrict__ num_tokens_per_rank, const int64_t* __restrict__ topk_idx, int num_tokens) {
+  extern __shared__ __align__(1024) uchar buf_dyn_shmem[];
+  int expert_begin_idx = 0;
+  int expert_end_idx = 0;
+  int sum = 0;
+  int expert_idx = 0;
+  int sm_begin = 0;
+  int rank_begin_idx = 0;
+  int rank_end_idx = 0;
+  int expert_begin = 0;
+  int expert_end = 0;
+  int sum_1 = 0;
+  int is_in_rank[8];
+  int expert_idx_1 = 0;
+  int rank_idx = 0;
+  *(int4*)(((int*)buf_dyn_shmem) + (((int)threadIdx.x) * 4)) = make_int4(0, 0, 0, 0);
+  expert_begin_idx = (((int)blockIdx.x) * 4);
+  expert_end_idx = min((expert_begin_idx + 4), 8);
+  __syncthreads();
+  if (expert_begin_idx < expert_end_idx) {
+    for (int _tmp = 0; _tmp < (((num_tokens + 255) - ((int)threadIdx.x)) >> 8); ++_tmp) {
+      for (int j = 0; j < 2; ++j) {
+        expert_idx = ((int)topk_idx[(((((int64_t)_tmp) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j))]);
+        if ((expert_begin_idx <= expert_idx) && (expert_idx < expert_end_idx)) {
+          ((int*)buf_dyn_shmem)[(((((int64_t)((int)threadIdx.x)) * (int64_t)4) + ((int64_t)expert_idx)) - ((int64_t)expert_begin_idx))] = (((int*)buf_dyn_shmem)[(((((int64_t)((int)threadIdx.x)) * (int64_t)4) + ((int64_t)expert_idx)) - ((int64_t)expert_begin_idx))] + 1);
+        }
+      }
+    }
+    __syncthreads();
+    if ((expert_begin_idx + ((int)threadIdx.x)) < expert_end_idx) {
+      sum = 0;
+      for (int i = 0; i < 256; ++i) {
+        sum = (sum + ((int*)buf_dyn_shmem)[((i * 4) + ((int)threadIdx.x))]);
+      }
+      if (0 <= (expert_begin_idx + ((int)threadIdx.x))) {
+        if ((expert_begin_idx + ((int)threadIdx.x)) < 8) {
+          num_tokens_per_expert[(expert_begin_idx + ((int)threadIdx.x))] = sum;
+        }
+      }
+    }
+  }
+  sm_begin = 2;
+  rank_begin_idx = ((((int)blockIdx.x) * 8) - (sm_begin * 8));
+  rank_end_idx = min((rank_begin_idx + 8), 2);
+  __syncthreads();
+  if ((0 <= rank_begin_idx) && (rank_begin_idx < rank_end_idx)) {
+    #pragma unroll
+    for (int i_1 = 0; i_1 < 2; ++i_1) {
+      *(int4*)(((int*)buf_dyn_shmem) + (((i_1 * 1024) + (((int)threadIdx.x) * 4)) + 1024)) = make_int4(0, 0, 0, 0);
+    }
+    expert_begin = (rank_begin_idx * 4);
+    expert_end = (rank_end_idx * 4);
+    __syncthreads();
+    for (int _tmp_1 = 0; _tmp_1 < (((num_tokens + 255) - ((int)threadIdx.x)) >> 8); ++_tmp_1) {
+      for (int i_2 = 0; i_2 < 2; ++i_2) {
+        *(int4*)(is_in_rank + (i_2 * 4)) = make_int4(0, 0, 0, 0);
+      }
+      for (int j_1 = 0; j_1 < 2; ++j_1) {
+        expert_idx_1 = ((int)topk_idx[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_1))]);
+        if ((expert_begin <= expert_idx_1) && (expert_idx_1 < expert_end)) {
+          rank_idx = ((expert_idx_1 >> 2) - rank_begin_idx);
+          is_in_rank[rank_idx] = (is_in_rank[rank_idx] + 1);
+        }
+      }
+      for (int j_2 = rank_begin_idx; j_2 < rank_end_idx; ++j_2) {
+        if (0 < is_in_rank[(((int64_t)j_2) - ((int64_t)rank_begin_idx))]) {
+          if (j_2 < 2) {
+            is_token_in_rank[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_2))] = (signed char)1;
+          }
+          ((int*)buf_dyn_shmem)[((((((int64_t)((int)threadIdx.x)) * (int64_t)8) + ((int64_t)j_2)) + (int64_t)1024) - ((int64_t)rank_begin_idx))] = (((int*)buf_dyn_shmem)[((((((int64_t)((int)threadIdx.x)) * (int64_t)8) + ((int64_t)j_2)) + (int64_t)1024) - ((int64_t)rank_begin_idx))] + 1);
+        } else {
+          if (j_2 < 2) {
+            is_token_in_rank[(((((int64_t)_tmp_1) * (int64_t)512) + (((int64_t)((int)threadIdx.x)) * (int64_t)2)) + ((int64_t)j_2))] = (signed char)0;
+          }
+        }
+      }
+    }
+    __syncthreads();
+    if ((rank_begin_idx + ((int)threadIdx.x)) < rank_end_idx) {
+      sum_1 = 0;
+      for (int i_3 = 0; i_3 < 256; ++i_3) {
+        sum_1 = (sum_1 + ((int*)buf_dyn_shmem)[(((i_3 * 8) + ((int)threadIdx.x)) + 1024)]);
+      }
+      if ((rank_begin_idx + ((int)threadIdx.x)) < 2) {
+        num_tokens_per_rank[(rank_begin_idx + ((int)threadIdx.x))] = sum_1;
+      }
+    }
+  }
+}
+
+
+Compilation error:
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(350): warning #549-D: variable "ret_val_x" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_x);
+                                               ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(352): warning #549-D: variable "ret_val_y" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_y);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(349): warning #550-D: variable "ret_val_x_cast" was set but never used
+      unsigned short ret_val_x_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(351): warning #550-D: variable "ret_val_y_cast" was set but never used
+      unsigned short ret_val_y_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(392): warning #549-D: variable "ret_val_x" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(394): warning #549-D: variable "ret_val_y" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val_y);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(437): warning #549-D: variable "ret_val" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val.x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(436): warning #550-D: variable "ret_val_x_cast" was set but never used
+      unsigned short ret_val_x_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(438): warning #550-D: variable "ret_val_y_cast" was set but never used
+      unsigned short ret_val_y_cast =
+                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(477): warning #549-D: variable "ret_val" is used before its value is set
+          *reinterpret_cast<unsigned short *>(&ret_val.x);
+                                               ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(513): warning #550-D: variable "ret_val" was set but never used
+      float2 ret_val;
+             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../atomic.h(578): warning #550-D: variable "ret_val" was set but never used
+      float4 ret_val;
+             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(551): warning #20012-D: __device__ annotation is ignored on a function("float_e4m3_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(551): warning #20012-D: __host__ annotation is ignored on a function("float_e4m3_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                                                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(561): warning #20012-D: __device__ annotation is ignored on a function("float_e5m2_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                             ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/./instruction/../common.h(561): warning #20012-D: __host__ annotation is ignored on a function("float_e5m2_t") that is explicitly defaulted on its first declaration
+    __inline__ __attribute__((always_inline)) __attribute__((device)) __attribute__((host))
+                                                                                     ^
+
+/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src/tl_templates/cuda/cuda_fp8.h(13): error: identifier "__nv_fp8_e8m0" is undefined
+  using fp8_e8_t = __nv_fp8_e8m0;
+                   ^
+
+1 error detected in the compilation of "/data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpgsegpddj/tvm_kernels.cu".
+
+Command: /usr/local/cuda-12.6/bin/nvcc --cubin -O3 -lineinfo -arch=sm_90a -std=c++17 -I/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/../src -I/data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/3rdparty/cutlass/include -o /data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpgsegpddj/tvm_kernels.cubin /data0/<user>/workspace/.local/veritile/gpu-node/tmp/tmpgsegpddj/tvm_kernels.cu
+
+[rank0]:[W1113 01:29:46.928096291 ProcessGroupNCCL.cpp:1524] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

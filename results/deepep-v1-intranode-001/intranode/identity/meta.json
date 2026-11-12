@@ -1,0 +1,37 @@
+{
+  "distinct": {},
+  "inputs": {
+    "topk_idx": {
+      "expected_sha256": "af02a5819caf1e777f3a0863994a83f2e5968fe1b0b52555ac3fcbd7590dc6b0",
+      "match": true,
+      "sha256": "af02a5819caf1e777f3a0863994a83f2e5968fe1b0b52555ac3fcbd7590dc6b0"
+    },
+    "topk_weights": {
+      "expected_sha256": "8c3d8e83a80a512b9e54d786610923a1c898e4635944d4835d3529869e1fb0e6",
+      "match": true,
+      "sha256": "8c3d8e83a80a512b9e54d786610923a1c898e4635944d4835d3529869e1fb0e6"
+    },
+    "x": {
+      "expected_sha256": "ad55c0f8c0e371a6708b0122e0c00e93d3ec24b16f32a4f204e6eb2b5b2d7a2b",
+      "match": true,
+      "sha256": "ad55c0f8c0e371a6708b0122e0c00e93d3ec24b16f32a4f204e6eb2b5b2d7a2b"
+    }
+  },
+  "launcher": "tilescale-deepep",
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 1,
+      "outputs": {},
+      "rank_status": [
+        "runtime_error",
+        "runtime_error"
+      ],
+      "status": "runtime_error",
+      "wall_time_s": 25.71
+    }
+  ],
+  "status": "runtime_error",
+  "wall_time_s": 25.71
+}

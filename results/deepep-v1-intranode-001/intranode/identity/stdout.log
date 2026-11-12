@@ -1,0 +1,6 @@
+== repeat 0 ==
+2026-11-13 01:29:26  [TileLang:tilelang.env:WARNING]: Loading tilelang libs from dev root: /data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/build
+2026-11-13 01:29:43  [TileLang:tilelang.jit.kernel:INFO]: TileLang begins to compile kernel `get_dispatch_layout_main` with `out_idx=None`
+NCCL version 2.27.5+cuda12.9
+2026-11-13 01:29:26  [TileLang:tilelang.env:WARNING]: Loading tilelang libs from dev root: /data0/<user>/workspace/.local/veritile/gpu-node/src/tilescale-deepep/build
+2026-11-13 01:29:43  [TileLang:tilelang.jit.kernel:INFO]: TileLang begins to compile kernel `get_dispatch_layout_main` with `out_idx=None`
