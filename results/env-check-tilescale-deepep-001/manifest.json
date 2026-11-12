@@ -1,0 +1,11 @@
+{
+  "batch_id": "env-check-tilescale-deepep-001",
+  "env_mismatch": [],
+  "finished": "2026-11-12T17:11:16Z",
+  "limits_exceeded": [],
+  "mode": "env-check",
+  "protocol": 1,
+  "request_commit": "42c609a3380a4328b622988c7922ecd8cb3bf709",
+  "started": "2026-11-12T17:11:16Z",
+  "tests": {}
+}
