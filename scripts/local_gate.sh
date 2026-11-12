@@ -22,7 +22,7 @@ for argument in "$@"; do
 done
 
 commands=("python3 scripts/check_docs.py")
-for suite in scripts/interp scripts/gpurun scripts/census experiments/interp_gpu/deepep_v1; do
+for suite in scripts/interp scripts/gpurun scripts/census experiments/interp_gpu/deepep_v1 experiments/interp_gpu/internode_logical; do
   commands+=("python3 -B -m unittest discover -s $suite -p test_*.py")
 done
 if [ "$lean" = 1 ]; then
