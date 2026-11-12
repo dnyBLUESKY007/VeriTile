@@ -121,7 +121,7 @@ DONE                     written last
 - No PASS / FAIL anywhere in the bundle.
 - No compiled artifacts (`.ptx`, `.ttir`): the work does not go below the front-end language.
 - Size limits: 50 MB per file, 100 MB per batch. A larger batch must be split by the dev side.
-- Results are public. Logs and `env.json` must not contain host names, user names, IP addresses, home-directory paths or credentials; `gpurun` scrubs paths before writing.
+- Results are public. Logs and `env.json` must not contain host names, user names, IP addresses, home-directory paths or credentials; `gpurun` scrubs paths, the host name and the user name before writing. The loopback address `127.0.0.1` is not private: the launchers use it as a constant and it names no machine; `gpurun` writes it as `<loopback>` in logs, and its appearance in a log written before that change does not block publication.
 
 ## 7. Judging (dev side only)
 
