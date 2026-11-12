@@ -98,6 +98,7 @@ class Gpurun(unittest.TestCase):
         error_log = (self.out / 'group/runtime_error/stderr.log').read_text()
         self.assertIn('RuntimeError: boom in <repo>/kernels.py', error_log)
         self.assertNotIn(str(self.root), error_log)
+        self.assertEqual(bundle.scrub('rendezvous at 127.0.0.1:23456', self.root), 'rendezvous at <loopback>:23456')
         self.assertFalse((self.out / 'group/runtime_error/out').exists())
         mismatch = json.loads((self.out / 'group/input_mismatch/meta.json').read_text())
         self.assertFalse(mismatch['inputs']['x']['match'])

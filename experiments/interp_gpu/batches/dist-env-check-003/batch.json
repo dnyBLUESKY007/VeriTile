@@ -1,0 +1,37 @@
+{
+  "protocol": 1,
+  "batch_id": "dist-env-check-003",
+  "mode": "dist",
+  "supersedes": "dist-env-check-002",
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "triton-dist"
+  },
+  "timeout_s": 600,
+  "tests": [
+    {
+      "id": "runtime/init_finalize",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/smoke/dist_runtime.py::init_finalize",
+      "launch": {},
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "world",
+          "dtype": "int32",
+          "shape": [
+            2
+          ],
+          "sentinel": "0x80000000"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    }
+  ]
+}

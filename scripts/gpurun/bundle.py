@@ -12,7 +12,9 @@ MARK = b'\n... [truncated by gpurun] ...\n'
 
 def scrub(text, root):
     """Remove paths, the user name and the host name; results are public."""
-    replacements = [(str(root), '<repo>'), (str(Path.home()), '<home>')]
+    # The loopback address is a constant of the launchers and names no machine; it is
+    # written as a label so that a reader checking for addresses finds none.
+    replacements = [(str(root), '<repo>'), (str(Path.home()), '<home>'), ('127.0.0.1', '<loopback>')]
     for private, label in ((socket.gethostname(), '<host>'), (getpass.getuser(), '<user>')):
         if len(private) > 2:  # a one-letter name would shred ordinary text
             replacements.append((private, label))
