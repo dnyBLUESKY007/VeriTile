@@ -1,0 +1,206 @@
+{
+  "protocol": 1,
+  "batch_id": "internode-logical-ag03-001",
+  "mode": "dist",
+  "supersedes": null,
+  "requires": {
+    "sm": 90,
+    "gpus": 2,
+    "env": "triton-dist"
+  },
+  "timeout_s": 900,
+  "notes": [
+    "Tutorial 03 of Triton-distributed 7908e4ea (inter-node all-gather): its kernels all_gather_push_1d_kernel and all_gather_push_2d_kernel, unchanged, on 64 bytes, 2 ranks. one_node/* is the control under triton-dist; logical_nodes/* runs 2 logical nodes of 1 rank.",
+    "Expected, judged on the development side only (experiments/interp_gpu/internode_logical/judge.py): every test ok; every rank returns the 64 input bytes.",
+    "The harness runs the tutorial functions, not the tutorial program: the file has no __main__ guard. It gives each signal tensor one word per rank; the tutorial program allocates one word and its kernels address word WORLD_SIZE - 1. See harness.py and documents/GpuInterNodeRuns.md.",
+    "Meant for an NVLink pair, as internode-logical-env-002 ran on."
+  ],
+  "tests": [
+    {
+      "id": "one_node/push_1d",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::all_gather",
+      "launch": {
+        "kernel": "push_1d"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "gathered",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "sentinel": "0x80"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    },
+    {
+      "id": "one_node/push_2d",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::all_gather",
+      "launch": {
+        "kernel": "push_2d"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "gathered",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "sentinel": "0x80"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist",
+      "repeats": 2
+    },
+    {
+      "id": "logical_nodes/push_1d",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::all_gather",
+      "launch": {
+        "kernel": "push_1d"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "gathered",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "sentinel": "0x80"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist-logical-nodes",
+      "logical_nodes": 2,
+      "repeats": 2
+    },
+    {
+      "id": "logical_nodes/push_2d",
+      "frontend": "triton-dist",
+      "entry": "experiments/interp_gpu/internode_logical/harness.py::all_gather",
+      "launch": {
+        "kernel": "push_2d"
+      },
+      "inputs": [
+        {
+          "name": "x",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "gen": {
+            "class": "normal",
+            "seed": 1
+          },
+          "sha256": "e7dbc37ca408aa79d667169e9a2bbf875e980a01428c6216fbd7ab4a17b5019f"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "topology",
+          "dtype": "int32",
+          "shape": [
+            6
+          ],
+          "sentinel": "0x80000000"
+        },
+        {
+          "name": "gathered",
+          "dtype": "int8",
+          "shape": [
+            64
+          ],
+          "sentinel": "0x80"
+        }
+      ],
+      "reference": {
+        "kind": "none"
+      },
+      "ranks": 2,
+      "launcher": "triton-dist-logical-nodes",
+      "logical_nodes": 2,
+      "repeats": 2
+    }
+  ]
+}
