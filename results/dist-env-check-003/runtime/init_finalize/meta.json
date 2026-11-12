@@ -1,0 +1,44 @@
+{
+  "distinct": {
+    "rank0/world": {
+      "4810dbdb9b0c7f8eb1fc21977e7e47c8a8b07971e8f70c4dac8e115501e1544d": 2
+    },
+    "rank1/world": {
+      "4f1a23615cd7d275993874e564c7f4cfa69a9202ac4ddb0f371f358387a1673a": 2
+    }
+  },
+  "inputs": {},
+  "launcher": "triton-dist",
+  "ranks": 2,
+  "repeats": 2,
+  "runs": [
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/world": "4810dbdb9b0c7f8eb1fc21977e7e47c8a8b07971e8f70c4dac8e115501e1544d",
+        "rank1/world": "4f1a23615cd7d275993874e564c7f4cfa69a9202ac4ddb0f371f358387a1673a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 16.096
+    },
+    {
+      "exit_code": 0,
+      "outputs": {
+        "rank0/world": "4810dbdb9b0c7f8eb1fc21977e7e47c8a8b07971e8f70c4dac8e115501e1544d",
+        "rank1/world": "4f1a23615cd7d275993874e564c7f4cfa69a9202ac4ddb0f371f358387a1673a"
+      },
+      "rank_status": [
+        "ok",
+        "ok"
+      ],
+      "status": "ok",
+      "wall_time_s": 15.494
+    }
+  ],
+  "status": "ok",
+  "wall_time_s": 31.59
+}

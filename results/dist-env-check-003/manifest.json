@@ -1,0 +1,13 @@
+{
+  "batch_id": "dist-env-check-003",
+  "env_mismatch": [],
+  "finished": "2026-11-12T17:36:08Z",
+  "limits_exceeded": [],
+  "mode": "dist",
+  "protocol": 1,
+  "request_commit": "ad26d295f4f8737ab82df8312a7eed21bbc4366c",
+  "started": "2026-11-12T17:35:37Z",
+  "tests": {
+    "runtime/init_finalize": "ok"
+  }
+}
