@@ -27,3 +27,4 @@ VeriTile.Dist.symmAt_eq_some_iff	VeriTile.Staging.Dist.LocationSpec	1a2bcee8b5fc
 VeriTile.Dist.ThreadGuard.existsUnique_runs_tidEq	VeriTile.Staging.Dist.LocationSpec	039fdde5a1318a0928c2c95a77f5ce9d760506e32500bf67fd7fb0bdaa0df41a	2026-11-11, S1.1 (#30), recorded by the agent on the user's delegation
 VeriTile.Dist.allGather_apply	VeriTile.Staging.Dist.SpecLibSpec	a7fa927afdd2c088692e6e269663dc3afe233f44720ac993dc502c91d20ebba2	2026-11-11, S7.1 (#66), recorded by the agent on the user's delegation
 VeriTile.Dist.allReduce_eq_of_leaves_perm	VeriTile.Staging.Dist.SpecLibSpec	8bfe7309b381e40a73f32ae7c619a6efb0e4a43856d34e3cd3b556ff7a0d17b3	2026-11-11, S7.1 (#66), recorded by the agent on the user's delegation
+VeriTile.Dist.moeCombine_of_moeDispatch	VeriTile.Staging.Dist.SpecLibSpec	2c012158bb844b354ad6a47439f56853daf143f06750164ba7f9b6cda6beffee	2026-11-12, S7.1 (#66), approved by the user, recorded by the agent on the user's delegation
