@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 
-from . import env as environment, run
+from . import dist, env as environment, run
 
 
 def main():
@@ -16,9 +16,17 @@ def main():
     go.add_argument('batch', type=Path)
     go.add_argument('--out', type=Path, required=True)
     commands.add_parser('_child').add_argument('work', type=Path)
+    commands.add_parser('_rank').add_argument('work', type=Path)
+    mock = commands.add_parser('_mock_torchrun')
+    mock.add_argument('ranks', type=int)
+    mock.add_argument('work', type=Path)
     args = parser.parse_args()
     if args.command == '_child':
         return run.child_main(args.work)
+    if args.command == '_rank':
+        return dist.rank_main(args.work)
+    if args.command == '_mock_torchrun':
+        return dist.mock_torchrun(args.ranks, args.work)
     try:
         if args.command == 'check-env':
             batch, env = run.load_batch(args.batch), environment.collect()
