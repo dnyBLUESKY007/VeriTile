@@ -22,8 +22,8 @@ for argument in "$@"; do
 done
 
 commands=("python3 scripts/check_docs.py")
-for package in interp gpurun census; do
-  commands+=("python3 -B -m unittest discover -s scripts/$package -p test_*.py")
+for suite in scripts/interp scripts/gpurun scripts/census experiments/interp_gpu/deepep_v1; do
+  commands+=("python3 -B -m unittest discover -s $suite -p test_*.py")
 done
 if [ "$lean" = 1 ]; then
   commands+=("bash scripts/check-core-examples.sh")
