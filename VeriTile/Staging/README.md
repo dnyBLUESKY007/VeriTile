@@ -67,3 +67,6 @@ never replaces a fingerprint that is already recorded:
   `python3 scripts/check_frozen_statements.py --accept-definitions`; the diff
   of `FrozenDefinitions.tsv` then lists exactly the definitions that were
   accepted.
+- **A statement is signed again together with a definition it rests on.** Mark
+  its fingerprint `-` and run the check with `--fill --accept-definitions` in
+  one run; each flag alone refuses while the other table still differs.

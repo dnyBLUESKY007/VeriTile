@@ -94,6 +94,13 @@ class ForkTargetGates(unittest.TestCase):
             after = definitions.read_text().splitlines()
             self.assertEqual([a == b for a, b in zip(before, after)], [True, True, False, True])
             self.assertEqual(check().returncode, 0)
+            # A statement re-signed together with a definition it rests on: neither flag alone can do it.
+            probe.write_text(source.replace('limit : Nat := 4', 'limit : Nat := 5').replace('n < 10', 'n < 12'))
+            tsv.write_text(tsv.read_text().replace(tsv.read_text().splitlines()[1].split('\t')[2], '-'))
+            self.assertNotEqual(check('--fill').returncode, 0)
+            self.assertNotEqual(check('--accept-definitions').returncode, 0)
+            self.assertEqual(check('--fill', '--accept-definitions').returncode, 0)
+            self.assertEqual(check().returncode, 0)
 
 
 if __name__ == '__main__':
