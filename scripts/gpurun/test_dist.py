@@ -36,6 +36,12 @@ def topology(rank, ranks, inputs, outputs, launch):
     seen = [os.environ[name] for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE', 'LOCAL_WORLD_SIZE')]
     outputs['topology'] = Tensor('int32', (6,), struct.pack('<6i', *map(int, seen), int(own), len(visible)))
 
+def rendezvous(rank, ranks, inputs, outputs, launch):
+    assert (os.environ['MASTER_ADDR'], os.environ['TILELANG_USE_DISTRIBUTED']) == ('127.0.0.1', '1')
+    assert 'TILELANG_USE_NVSHMEM' not in os.environ
+    seen = [os.environ[name] for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE', 'LOCAL_WORLD_SIZE', 'MASTER_PORT')]
+    outputs['rendezvous'] = Tensor('int32', (5,), struct.pack('<5i', *map(int, seen)))
+
 def first_repeat_differs(rank, ranks, inputs, outputs, launch):
     seen = HERE / f'seen{rank}'
     if seen.exists():
@@ -258,6 +264,34 @@ class Dist(unittest.TestCase):
         for node in range(2):
             self.assertIn(f'CUDA_VISIBLE_DEVICES={node} ARNOLD_WORKER_NUM=2 ARNOLD_ID={node} '
                           'ARNOLD_WORKER_0_HOST=127.0.0.1 bash "$0" --nproc_per_node=1 "$@" &', command[2])
+
+    def test_deepep_launcher_needs_the_port_beside_the_module_and_starts_one_rank_per_gpu(self):
+        checkout = self.root / 'tilescale'
+        (checkout / 'tilelang').mkdir(parents=True)
+        (checkout / 'tilelang/__init__.py').write_text('')
+        h800 = {'gpus': [{'name': 'H800', 'sm': 90}] * 2, 'versions': {}}
+        seen = {'name': 'rendezvous', 'dtype': 'int32', 'shape': [5], 'sentinel': '0x80000000'}
+        port = test_case('port', 'rendezvous', launcher=dist.DEEPEP, outputs=[seen])
+        self.assertEqual(len(dist.refusals(port, h800, 1)), 1)  # no tilelang on this host
+        with mock.patch.object(sys, 'path', [str(checkout), *sys.path]), mock.patch.dict(os.environ):
+            os.environ.pop('TILELANG_USE_NVSHMEM', None)
+            importlib.invalidate_caches()
+            self.assertIsNone(dist.deepep_port())  # a wheel: the module without `examples/`
+            self.assertEqual(dist.refusals(port, h800, 1), [
+                'examples/distributed/deepseek_deepep not found beside an editable install of tilelang'])
+            (checkout / 'examples/distributed/deepseek_deepep').mkdir(parents=True)
+            (checkout / 'examples/distributed/deepseek_deepep/buffer.py').write_text('')
+            self.assertEqual(dist.deepep_port(), checkout / 'examples/distributed/deepseek_deepep')
+            self.assertEqual(len(dist.refusals(port, h800, 2)), 1)  # one node only
+            self.assertEqual(len(dist.refusals({**port, 'ranks': 4}, h800, 1)), 1)  # a GPU per rank
+            self.write_batch([port, test_case('fails', 'rank1_fails', launcher=dist.DEEPEP)])
+            self.assertEqual(self.run_batch(env=h800), {'port': 'ok', 'fails': 'runtime_error'})
+        stored = sorted((self.out / 'port/out').glob('rank*/rendezvous/*.tensor'))
+        ranks = [struct.unpack('<5i', tensorfile.read(path).data) for path in stored]
+        self.assertEqual([seen[:4] for seen in ranks], [(0, 0, 2, 2), (1, 1, 2, 2)])
+        self.assertEqual(ranks[0][4], ranks[1][4])  # one port for both ranks
+        self.assertGreater(ranks[0][4], 0)
+        self.assertEqual(self.meta('fails')['runs'][0]['rank_status'], ['ok', 'runtime_error'])
 
     def test_rank_refuses_a_topology_the_launcher_did_not_give(self):
         logical = test_case('logical', 'world', launcher=dist.LOGICAL, logical_nodes=2)

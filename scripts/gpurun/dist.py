@@ -32,6 +32,12 @@ GPU the launcher `triton-dist` gives that rank. Such a test is not a run on
 several physical nodes: `requires.nodes` stays 1, and its meta.json says
 `"topology": "logical-nodes"` with `logical_nodes` and `local_ranks`.
 
+The launcher `tilescale-deepep` is for the DeepEP version 1 port in TileScale.
+It starts the ranks as the port's own test does: one process per rank on this
+host, no NVSHMEM, meeting over TCP on the loopback address. It refuses to run
+unless the port's source lies beside an editable install of `tilelang`, where
+a harness finds it with `deepep_port()`.
+
 Result of a test:
 
     meta.json                              status, ranks, launcher, repeats, inputs, wall_time_s,
@@ -117,12 +123,46 @@ def logical_nodes(test, work):
     return ['bash', '-c', '\n'.join(script), str(launch_script()), '-m', 'gpurun', '_rank', str(work)]
 
 
+DEEPEP = 'tilescale-deepep'
+
+
+def deepep_port():
+    """`examples/distributed/deepseek_deepep` of the checkout the installed `tilelang` was built from, or None.
+
+    Found through the editable install that the pinned TileScale prescribes
+    (its `docs/get_started/Installation.md`), so the kernels are of the same
+    commit as the module env.json pins. A wheel does not contain `examples/`.
+    """
+    spec = importlib.util.find_spec('tilelang')
+    port = Path(spec.origin).parents[1] / 'examples/distributed/deepseek_deepep' if spec and spec.origin else None
+    return port if port and (port / 'buffer.py').is_file() else None
+
+
+def tilescale_deepep(test, work):
+    """One process per rank on this host, as the port's `example_intranode.py` spawns them.
+
+    The ranks meet at a port of the loopback address that is free at launch
+    (`init_dist` of the pinned TileScale reads `MASTER_ADDR` and `MASTER_PORT`).
+    `TILELANG_USE_DISTRIBUTED=1` is the setting of the port's documented
+    command; `TILELANG_USE_NVSHMEM` stays unset.
+    """
+    ranks = test['ranks']
+    free_port = 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
+    # shortcut: when one rank fails the others run on until the test's timeout; kill them here if that wait ever matters.
+    script = [f'port=$("$0" -c {shlex.quote(free_port)})',
+              f'for ((rank = 0; rank < {ranks}; rank++)); do',
+              f'  RANK=$rank LOCAL_RANK=$rank WORLD_SIZE={ranks} LOCAL_WORLD_SIZE={ranks} '
+              f'MASTER_ADDR={LOOPBACK} MASTER_PORT=$port TILELANG_USE_DISTRIBUTED=1 "$0" "$@" & pids+=($!)',
+              'done', 'code=0', 'for pid in "${pids[@]}"; do wait "$pid" || code=1; done', 'exit $code']
+    return ['bash', '-c', '\n'.join(script), sys.executable, '-m', 'gpurun', '_rank', str(work)]
+
+
 def mock(test, work):
     """CPU launcher of the self-test."""
     return [sys.executable, '-m', 'gpurun', '_mock_torchrun', str(test['ranks']), str(work)]
 
 
-LAUNCHERS = {'triton-dist': triton_dist, LOGICAL: logical_nodes, 'mock': mock}
+LAUNCHERS = {'triton-dist': triton_dist, LOGICAL: logical_nodes, DEEPEP: tilescale_deepep, 'mock': mock}
 
 
 def mock_torchrun(ranks, work):
@@ -164,11 +204,12 @@ def refusals(test, env, nodes):
     # Only the self-test's pair of mock launcher and mock frontend touches no GPU.
     if (test['launcher'], test['frontend']) != ('mock', 'mock') and test['ranks'] > visible:
         reasons.append(f"needs {test['ranks']} GPUs, one per rank; {visible} visible")
-    if test['launcher'] in ('triton-dist', LOGICAL):
-        if nodes > 1:  # physical nodes: logical nodes never count as them
-            reasons.append(f"launcher {test['launcher']!r} starts ranks on one node; the batch requires {nodes}")
-        if launch_script() is None:
-            reasons.append('scripts/launch.sh not found beside an editable install of triton_dist')
+    if test['launcher'] != 'mock' and nodes > 1:  # physical nodes: logical nodes never count as them
+        reasons.append(f"launcher {test['launcher']!r} starts ranks on one node; the batch requires {nodes}")
+    if test['launcher'] in ('triton-dist', LOGICAL) and launch_script() is None:
+        reasons.append('scripts/launch.sh not found beside an editable install of triton_dist')
+    if test['launcher'] == DEEPEP and deepep_port() is None:
+        reasons.append('examples/distributed/deepseek_deepep not found beside an editable install of tilelang')
     if test['launcher'] == LOGICAL and len(devices(test['ranks'])) < test['ranks']:
         reasons.append(f"CUDA_VISIBLE_DEVICES lists {len(devices(test['ranks']))} GPUs; "
                        f"the logical nodes need {test['ranks']}, one per rank")

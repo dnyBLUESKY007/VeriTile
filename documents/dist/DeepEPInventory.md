@@ -606,73 +606,184 @@ port. K-D.2, K-D.10, K-D.11, K-D.15 and K-D.16 concern low-latency kernels.
 
 ## 7. Running it on the H800 node through `gpurun`
 
-No run request was written, because the recommended source cannot run in an
-installed environment. Two failures are certain from the source (R, section
-4.2): in the `tilescale` environment `buffer.py:9` raises on
-`tilelang.distributed.utils`, and `intranode/combine.py:285` has no
-`T.warp_any`. What is needed, in order:
+Updated for ticket K-D.17 on 2026-11-12. The request is written and committed;
+it is not announced, and nothing of the port has run. This section keeps the
+nine needs that ticket K-D.1 listed, says how the request meets each, and
+where the source made it differ from that list. Line numbers are in TileScale
+at `9ba8a605`; a path that starts with `intranode/`, `buffer.py` or
+`deepep_utils.py` is under `examples/distributed/deepseek_deepep/`.
 
-1. **An environment for the port.** A fifth environment on the GPU node, built
-   from TileScale at `9ba8a605` with its submodules (TVM `23bce012`, CUTLASS
-   `b2dd65dc`), including the native extension `tilescale_ext`, `cuda-python`
-   and `packaging`, and a host C++ compiler at run time for
-   `deepep_utils.py:319`. It cannot share an environment with `tilescale` or
-   `tilelang`: all three provide the import name `tilelang`. NVSHMEM is not
-   needed for the intranode path unless `TILELANG_USE_NVSHMEM=1` (R, section
-   4.2). Whether the branch builds on the node is **U**.
-2. **A pin for it in `gpurun`.** `scripts/gpurun/env.py` knows four
-   environments (`PINS`); any other name returns `skipped_env` with "unknown
-   environment". A fifth entry is needed, for example
-   `'tilescale-deepep-v1': ('tilelang', 'git9ba8a605', False)`, and a fifth
-   row in section 9 of the protocol. **I:** the version string would be
-   `0.1.7.post1+cuda.git9ba8a605` (`version_provider.py:62-77` at `9ba8a605`);
-   **U** until an `env-check` reports it.
-3. **The kernel files in this repository.** An `entry` must be a file of the
-   repository at the pinned commit, and `examples/` is not part of the
-   installed package. Five files are needed: `intranode/get_dispatch_layout.py`,
-   `intranode/dispatch.py`, `intranode/combine.py`, `buffer.py`,
-   `deepep_utils.py`. The MIT license of TileScale permits the copy if the
-   copyright and permission notice go with it; the files carry no header, so
-   the notice goes into the `SOURCE.md` next to them, with repository, commit
-   and path. Nothing was copied in this ticket.
-4. **A harness that starts the ranks.** `gpurun` runs one process on the first
-   visible GPU and hands it GPU tensors. The port needs one process per rank,
-   each bound to its own GPU (section 4.2). The harness must therefore move
-   the inputs to the CPU, start two processes with the `spawn` method as the
-   example does (`MASTER_ADDR` and `MASTER_PORT` select the rendezvous
-   address), let each run `get_dispatch_layout`, `dispatch` and `combine`
-   through `EPBuffer` with its own inputs, and copy both ranks' results into
-   the output tensors of the parent. `gpurun` kills the whole process group on
-   a timeout, which is the only guard against a hang: the port has no timeout
-   of its own.
-5. **Outputs with known shapes.** The row count of `recv_x` on a rank depends
-   on the routing. The requester can compute it from the generated `topk_idx`
-   (it is the sum of a column of `is_token_in_rank` over both ranks), and
-   because the row order is fixed (section 3.2) a `compare` request with exact
-   comparison is meaningful. Candidate outputs per rank: `is_token_in_rank`,
-   `num_tokens_per_rank`, `num_tokens_per_expert`, `recv_x`, `recv_src_idx`,
-   `recv_topk_idx`, `recv_topk_weights`, `combined_x`,
+The request is four things:
+
+| What | Where |
+| --- | --- |
+| Batch, two tests, two ranks, two repeats each | `experiments/interp_gpu/batches/deepep-v1-intranode-001/batch.json` |
+| Per-rank harness | `experiments/interp_gpu/deepep_v1/harness.py` |
+| Launcher `tilescale-deepep` | `scripts/gpurun/dist.py` |
+| Judge and its self-test | `experiments/interp_gpu/deepep_v1/judge.py`, `test_deepep_v1.py` |
+
+### 7.1 The nine needs
+
+1. **An environment for the port.** Met by the GPU side on 2026-11-12: the
+   environment `tilescale-deepep` reports `tilelang.__version__`
+   `0.1.7.post1+cuda.git9ba8a605`, Python 3.11 and PyTorch 2.9.1+cu126, and
+   imports `tilelang`, `tilescale_ext._C` and `tilelang.distributed`. No kernel
+   has run in it.
+2. **A pin in `gpurun`.** Met: `scripts/gpurun/env.py` pins `tilescale-deepep`
+   to a `tilelang` version containing `git9ba8a60`.
+3. **The kernel files.** Differs from the list: nothing is copied. The `entry`
+   is the harness, a file of this repository, and it imports the port from
+   the checkout the environment was built from
+   (`gpurun.dist.deepep_port()`: `examples/distributed/deepseek_deepep` beside
+   the `tilelang` module). **R:** the install that the pinned TileScale
+   documents is editable (`docs/get_started/Installation.md:36`,
+   `pip install -e . --no-build-isolation`), and a wheel holds only the
+   packages `tilelang` and `tilescale_ext` (`pyproject.toml:118-121`), so the
+   import needs the editable install. **U:** whether the environment was
+   installed that way. If it was not, the launcher refuses the test and it
+   returns `skipped_env` with that reason; the remedy is then an editable
+   install on the GPU side, or vendoring the five files with the MIT notice.
+4. **A harness that starts the ranks.** Differs from the list, which was
+   written before `dist` mode existed: `gpurun` now starts one process per
+   rank and calls the harness in each, so the starting is done by a launcher.
+   The launcher `tilescale-deepep` starts one process per rank on the host
+   with `RANK`, `LOCAL_RANK`, `WORLD_SIZE` and `LOCAL_WORLD_SIZE`, as the
+   port's test spawns one process per GPU
+   (`intranode/example_intranode.py:258`), and sets three more variables:
+   - `MASTER_ADDR=127.0.0.1` and `MASTER_PORT`, a port that is free when the
+     launch starts. **R:** `init_dist` reads both
+     (`tilelang/distributed/utils.py:43-44`).
+   - `TILELANG_USE_DISTRIBUTED=1`, the setting of the documented command
+     (`deepep.md:139`). **R:** the code generator and the kernel wrapper read
+     it (`src/target/codegen_cuda.h:24`, `tilelang/jit/adapter/wrapper.py:220`).
+     `TILELANG_USE_NVSHMEM` stays unset.
+
+   The harness then follows the port's test: `init_dist`, `EPBuffer`,
+   `get_dispatch_layout`, `dispatch` without a handle, `combine`, with a
+   barrier of the process group after each step, and
+   `destroy_process_group`. Two things in the source go beyond the list:
+   - **R:** `init_dist` reads `WORLD_SIZE` and `RANK` as the number of nodes
+     and the rank of this node and multiplies by its second argument
+     (`tilelang/distributed/utils.py:45-53`). `gpurun` needs both variables
+     set per rank, so the harness removes them for that one call and puts
+     them back.
+   - **R:** `intranode_dispatch` launches its kernel on a stream of its own
+     and returns without waiting for it (`intranode/dispatch.py:856-881`);
+     `intranode_combine` waits (`intranode/combine.py:413-414`). The harness
+     therefore calls `torch.cuda.synchronize()` before it reads a result and
+     before it hands rows to the combine. It changes no kernel and no file of
+     the port.
+
+   `gpurun` kills every process below the launcher when `timeout_s` passes
+   (1800 s for the two repeats of a test). That is still the only guard
+   against a hang. Outputs are lost with a killed rank, so the harness prints
+   one line per finished step, and the layout counts, to the log.
+5. **Outputs with known shapes.** Met with the nine candidate outputs. The
+   four dispatch outputs have room for `ranks * tokens` rows, the largest
+   count possible; rows a rank does not receive keep the sentinel, so the
+   footprint check counts the rows. `is_token_in_rank` is returned as `uint8`
+   because a `bool` tensor has no sentinel.
+6. **Inputs from the pinned generator.** Met. Every rank gets the same input
+   tensors in `dist` mode, so each input has a leading dimension of size
+   `ranks` and rank r takes slice r: `x` is `bf16` `[2, 40, 64]`, `topk_idx`
+   is `int64` `[2, 40, 2]` in `-1 .. 7`, `topk_weights` is `fp32`
+   `[2, 40, 2]`, with 8 experts. The seed of `topk_idx` (34630) is the first
+   for which no token selects an expert twice and each rank has a token for
+   no rank, for each rank alone and for both. The self-test checks these
+   properties.
+7. **Parameters for two ranks.** Met: 2 ranks, 4 experts per rank,
+   `hidden = 64`, `num_topk = 2`, the non-cached dispatch. Section 7.3 says
+   what the thread election does with two ranks.
+8. **An NVLink pair.** Unchanged: the operator makes one pair visible with
+   `CUDA_VISIBLE_DEVICES`; rank r runs on visible GPU r.
+9. **The original as a second reference.** Not done. `deep_ep` is not asked
+   for; the reference is the judge's.
+
+### 7.2 What is compared
+
+The judge computes every output of every rank from the regenerated inputs
+with the standard library, following section 3.2, and says `equal` only when
+all bytes agree in every repeat. Between dispatch and combine the harness
+lets rank d return each received row times a factor `scale[d]`. That is the
+expert step of the frozen `moeCombine_of_moeDispatch` with the weight of a
+token on rank d set to `scale[d]`; the gate weights travel beside the rows
+and are compared on their own.
+
+| Test | `scale` | Combined row of a token sent to rank 0, rank 1, both, none |
+| --- | --- | --- |
+| `intranode/identity` | 1, 1 | x, x, 2x, 0 |
+| `intranode/rank_weighted` | 1, -0.5 | x, -x/2, x/2, 0 |
+
+`identity` is what the port's own test and DeepEP's do. It cannot tell the
+sum of the two ranks' rows from one rank's row taken twice; `rank_weighted`
+can, because the two ranks return different rows.
+
+**Order and tolerance.** **R:** the port starts from zero and adds the
+returned rows in increasing rank in `float32`, then stores `bf16`
+(`intranode/combine.py:306-325`). The comparison has no tolerance. With these
+factors every partial sum is x, -x/2, x/2, 2x or 0, each exact in `float32`
+and in `bf16`, so neither the order nor a rounding mode can change a bit, and
+with two ranks a sum has at most two terms. The judge refuses a reference
+value that the output type cannot hold exactly, so a later batch with other
+factors cannot pass this claim on silently.
+
+### 7.3 What only a run can settle
+
+1. **The thread election with two ranks.** **R:** the combine sender publishes
+   a tail under `T.shuffle_elect(96)` (`intranode/combine.py:217`), which
+   elects "exactly one lane" in each group of 96 threads
+   (`tilelang/language/builtin.py:438-459`); a block has 768 threads, so
+   eight lanes are elected. Warp w of a block serves rank
+   `(channel + w) % num_ranks` (`intranode/combine.py:148`), and with two
+   ranks a rank owns 384 threads (`112`). **I:** a group of 96 threads is
+   three consecutive warps. If the elected lane sits in the same warp of
+   every group, four elected lanes serve each rank, and each stores the same
+   value after the barrier of its rank (`216`). The documentation does not
+   say which lane of a group is elected. If the lanes were spread otherwise,
+   a rank could get none, its tail would never be published and the receiver
+   would wait until the timeout. **U:** which of these happens, and whether
+   four release stores of one value to one location are harmless. The request
+   does not work around this. Its inputs give at most 4 rows per channel and
+   rank, below the 10 rows of one round (`deepep_utils.py:76`), so a tail is
+   published in one round and takes one value. The non-cached dispatch elects
+   one lane per warp (`intranode/dispatch.py:311`, `411`, `510`) and does not
+   use the constant.
+2. **The build for two ranks.** The kernels are compiled for `num_ranks = 2`
+   (384 threads and 12 warps per rank, `intranode/dispatch.py:259-264`,
+   `intranode/combine.py:111-112`). The source has tuning entries for 2 ranks
+   (`deepep_utils.py:46`, `76`); its only reported run uses 8.
+3. **The layout kernel without a barrier** (section 4.2): the counts per rank
+   and per expert are summed over threads with no barrier after the
+   per-thread counting. The dispatch takes its sizes from these counts. Both
+   are outputs of the request.
+4. **Loads with `nc=True` from buffers a peer writes** (section 4.2). A stale
+   value would show in `recv_src_idx`, `combined_x` or
    `combined_topk_weights`.
-6. **Inputs from the pinned generator.** `scripts/interp/gen_inputs.py` can
-   produce `x` in BF16, `topk_weights` in `fp32` and `topk_idx` in `int64`
-   with `low` and `high`. Indices drawn this way may repeat an expert within
-   one token. **I:** the kernels accept that (the layout counts selections,
-   `intranode/get_dispatch_layout.py:131-143`), but it is not a top-k; a
-   request should say so or use a range that includes `-1` deliberately.
-7. **Parameters for two ranks.** `num_ranks = 2` has tuning entries
-   (`deepep_utils.py:46`, `76`); `num_experts` even; `hidden % 8 == 0`;
-   `num_topk <= 32`. The cached dispatch and the combine sender publish the
-   tail under `T.shuffle_elect(96)`, which with two ranks makes four threads
-   store the same value (I, section 4.2); the first request should use the
-   non-cached dispatch and report this for the combine.
-8. **The two GPUs must be an NVLink pair** with peer access, because the
-   symmetric heaps are mapped through CUDA inter-process handles.
-9. **Optional: the original as a second reference.** Installing `deep_ep` at
-   `b57e5e21` in the same environment (`TORCH_CUDA_ARCH_LIST=9.0`; without
-   `NVSHMEM_DIR` the build keeps the intranode kernels, `setup.py:19-31`)
-   would let a request return the original's outputs next to the port's.
-   `tilelang/distributed/install_deepep.sh` at `9ba8a605` does this from the
-   submodule.
+5. **Paths the port's own test does not reach.** **I:** its inputs come from
+   a top-k of 8 among 32 experts for 4096 tokens (`deepep_utils.py:148-152`,
+   `intranode/example_intranode.py:244-248`), so no selection is `-1`, no
+   token goes to no rank, and every channel has tokens for every rank. The
+   request has all three cases; **R:** the kernels encode a count of zero
+   (`intranode/dispatch.py:309-316`).
+6. **The editable install** (need 3).
+7. **The host side with two ranks**: the process group over TCP on a fresh
+   port for each launch; the 1 GiB symmetric heap of each rank mapped into
+   the other through inter-process handles; the C++ helper that
+   `deepep_utils.py:319` compiles at import through
+   `torch.utils.cpp_extension`, in both ranks at the same time;
+   the mapped counters of `buffer.py:152-153`. `gpurun` moves the inputs to
+   the GPU before the harness calls `init_dist`; in the port's test
+   `init_dist` comes first.
+8. **Time.** **R:** `intranode/combine.py:13` disables the kernel cache at
+   import, so every launch compiles the five kernels in each rank. Whether
+   two launches fit in 1800 s is not known.
+9. **The harness's own arithmetic.** `recv_x * scale[d]` is computed by
+   PyTorch in `bf16`. **I:** the products by 1 and by -0.5 are exact.
+10. **The row order** of section 3.2, which is an inference from the source.
+
+Not covered by this request: the cached dispatch, more than two ranks, a
+receive buffer that fills (256 slots per channel and rank against at most 4
+rows), the FP8 payload and a comparison with `deep_ep`.
 
 ## 8. The frozen MoE specification against version 1 normal mode
 
