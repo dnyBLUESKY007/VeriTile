@@ -1,9 +1,9 @@
 # K-L.1: proposed TileLang example selection
 
-Status: **proposal; user confirmation pending**. Access date for all sources and
+Status: **list and sources confirmed by the user on 2026-11-12; #130 reconciliation pending**. Access date for all sources and
 tracker observations: **2026-11-12**. This is the document deliverable of
 [#228](https://github.com/dnyBLUESKY007/VeriTile/issues/228), not implementation,
-a proof result, or acceptance of the list.
+a proof result, or completion of the #130 reconciliation gate.
 
 ## Sources and interpretation
 
@@ -99,13 +99,14 @@ FP32 GEMM or scaled-attention task, so neither is presented as a ready-made port
 
 ## Confirmation and downstream gates
 
-The concrete question for the user is: **approve these nine worked-example
-pairs plus the six named provisional representatives, the proposed benchmark
-pin, and the source choices above?** In particular, the proposal includes the
-comparison variants, retains Welford's per-program output restriction, and does
-not treat a similar TileLang example as the same floating-point program.
+On **2026-11-12**, the user confirmed the nine worked-example pairs, six named
+provisional representatives, benchmark pin and source choices above, while
+explicitly retaining the #130 reconciliation gate. This includes the comparison
+variants and Welford's per-program output restriction; a similar TileLang example
+is still not treated as the same floating-point program.
 
-- User confirmation: **pending**. This document does not sign on the user's behalf.
+- User confirmation: **recorded, 2026-11-12**. The user confirmed the list and
+  sources and explicitly retained the #130 gate; this records their decision.
 - I10.1 assignment reconciliation: **pending #130**. Recheck all six selections
   against the delivered assignment; replace a misassigned representative through
   review, or record why TileLang cannot express a family under #233. No claim
