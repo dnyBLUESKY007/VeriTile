@@ -9,7 +9,7 @@ open VeriTile.Triton.DSL
 
 private partial def helpers (raw : Syntax) : List Name :=
   let here := if raw.isOfKind ``tritonSourceUniformHelper ||
-      raw.isOfKind ``tritonSourceFiniteHelper then [raw[1].getId.eraseMacroScopes] else []
+      raw.isOfKind ``tritonSourceFiniteHelper || raw.isOfKind ``tritonSourceFiniteAlias then [raw[1].getId.eraseMacroScopes] else []
   here ++ raw.getArgs.toList.flatMap helpers
 
 private partial def select (bound : List Name) (raw : Syntax) : Syntax :=

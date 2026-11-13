@@ -39,4 +39,28 @@ def procedureInstance (x y : RegionName) : ComputeKernel :=
   instantiate_source_procedure copyProcedure signature signature procedure_args [x := x,y := y]
 example (x y : RegionName) : (caller x y).surfaceBody = (procedureInstance x y).surfaceBody := rfl
 
+def finiteAlias (input : RegionName) : ComputeKernel := triton {
+  tl.source_alias _finitef = triton.language.extra.cuda.libdevice.finitef
+  tl.source_alias _isfinited = triton.language.extra.cuda.libdevice.isfinited
+  tl.source_helper isfinite_func(x) {
+    return (_isfinited(x) if x.dtype.is_fp64() else _finitef(x.to(tl.float32)))
+  }
+  tl.region input = tl.float32
+  in0 = tl.load(input + tl.arange(0, 4))
+  out0 = isfinite_func(in0)
+}
+example (input : RegionName) : (finiteAlias input).surfaceBody.getLast? = some
+    (.assign .bool [4] "out0" (.isFinite .fp32
+      (.compute (.alg .fp32 (.castFloat .real .real (.ref .real [4] "in0")))))) := rfl
+
+def directFiniteAlias (input : RegionName) : ComputeKernel := triton {
+  tl.source_alias finitef = triton.language.extra.cuda.libdevice.finitef
+  tl.region input = tl.float32
+  in0 = tl.load(input + tl.arange(0, 4))
+  out0 = finitef(in0)
+}
+example (input : RegionName) : (directFiniteAlias input).surfaceBody.getLast? = some
+    (.assign .bool [4] "out0" (.isFinite .fp32
+      (.compute (.alg .fp32 (.ref .real [4] "in0"))))) := rfl
+
 end VeriTile.Tests.Dist.SourceHelperSyntax
