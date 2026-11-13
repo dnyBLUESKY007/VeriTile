@@ -9,7 +9,7 @@ Other range keywords remain parse failures. `pass` emits no statement and
 
 Sources (accessed 2026-11-13):
 - Triton v3.5.1 `range` documentation:
-  https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L2947-L2985
+  https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L3212-L3253
 - Triton sum/member-function documentation:
   https://triton-lang.org/main/python-api/generated/triton.language.sum.html
 - Python pass statement:
@@ -82,6 +82,9 @@ private partial def lowerRange (raw : Syntax) : MacroM Syntax := do
       | _ => Macro.throwUnsupported
     match bounds, step with
     | [stop], none => return (← `(tritonStmt| for $i:ident in range($stop) { $body* })).raw
+    | [stop], some stride =>
+      let start ← `(tritonExpr| 0)
+      return (← `(tritonStmt| for $i:ident in range($start, $stop, $stride) { $body* })).raw
     | [start, stop], none =>
       return (← `(tritonStmt| for $i:ident in range($start, $stop) { $body* })).raw
     | [start, stop, stride], none | [start, stop], some stride =>

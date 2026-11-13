@@ -32,6 +32,15 @@ def pythonStep (N : Nat) : ComputeKernel :=
 
 example (N : Nat) : namedStep N = pythonStep N := rfl
 
+-- A single bound is the stop even when a separate named step is supplied.
+example (N : Nat) : (with_triton_signature profile in triton {
+  for i in tl.range(N, step=2):
+    x = i
+} : ComputeKernel) = with_triton_signature profile in triton {
+  for i in range(0, N, 2):
+    x = i
+} := rfl
+
 -- Pinned range documentation says factors below two disable unrolling;
 -- larger factors are also hints and leave the sequential program unchanged.
 example : (triton {
