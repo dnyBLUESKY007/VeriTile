@@ -55,7 +55,7 @@ search proved that no upstream implementation exists.
 | [SoftmaxStable](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/SoftmaxStable/SoftmaxStable.py) — `naive_softmax`, `stable_softmax` | Written by us. | Global FP32 input/BF16 output and planned fragment intermediates. Preserve naive versus max-subtracted exponentiation and output rounding; the related online example below is not a drop-in counterpart. Dtype contract: [module docstring, lines 1–7](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/SoftmaxStable/SoftmaxStable.py#L1-L7). |
 | [OnlineSoftmax](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/OnlineSoftmax/OnlineSoftmax.py) — `stableSoftmaxKernel`, `onlineSoftmaxKernel` | Written by us; related upstream online example is compared below, not directly reused. | Global FP32 input/output; planned fragment row plus local scalar running max/sum. Preserve scalar input traversal, both passes and the separate arithmetic graph of the online variant. Dtype contract: [module docstring, lines 1–8](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/OnlineSoftmax/OnlineSoftmax.py#L1-L8). |
 | [FusedSiLU](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSiLU/FusedSiLU.py) — `fused_silu`; `silu_gate` → `silu_activation` → `silu_residual` | Written by us. | Global inputs/output and global intermediate buffers for the three-launch comparison; planned fragment arithmetic. Preserve residual + silu(x * gate), FP64 input/scratch and BF16 output, not ordinary silu(x) alone. Dtype contract: [module docstring, lines 1–7](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSiLU/FusedSiLU.py#L1-L7). |
-| [FusedSwiglu](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py) — `swiglu_fused`; `silu_step` → `mul_step` | Written by us. | Global FP32 inputs, BF16 intermediate scratch/output and planned fragment arithmetic. Preserve masks, BF16 intermediate rounding, re-load conversion and ordered two-launch comparison. Dtype contract: [module docstring, lines 1–5](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py#L1-L5). |
+| [FusedSwiglu](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py) — `swiglu_fused`; `silu_step` → `mul_step` | Written by us. | Global FP32 inputs, BF16 intermediate scratch/output and planned fragment arithmetic. Preserve masks, BF16 intermediate rounding, re-load conversion and ordered two-launch comparison. Input/scratch dtype contract: [module docstring, lines 1–5](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py#L1-L5). BF16 output conversions: [store at line 17](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py#L17) and [store at line 34](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/FusedSwiglu/FusedSwiglu.py#L34). |
 | [StableLogSumExp](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/StableLogSumExp/StableLogSumExp.py) — `direct_log_sum_exp`, `guarded_log_sum_exp` | Written by us. | Global FP32 input/BF16 scalar output; planned fragment reductions/scalars. Retain both guarded fallback branches and conversions, not just a textbook unguarded log-sum-exp formula. Dtype contract: [module docstring, lines 1–7](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/StableLogSumExp/StableLogSumExp.py#L1-L7). |
 | [Welford](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/Welford/Welford.py) — `twopassWelfordKernel`, `onlineWelfordKernel` | Written by us. | Global FP32 row and two BF16 scalar outputs at address zero; planned fragment row and local scalar statistics. Preserve count conversions and per-program contract; do not reinterpret this as an arbitrary multi-row launch writing distinct outputs. Dtype contract: [module docstring, lines 1–9](https://github.com/VeriInfra-Lab/VeriTile/blob/3a0d07615a31b28e46ceff9660ce44351c425a73/bench/examples/Welford/Welford.py#L1-L9). |
 
@@ -75,12 +75,14 @@ even an adapted source still needs its correspondence and proof.
 | [elementwise add](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/elementwise/example_elementwise_add.py#L11-L32), `elementwise_add`, lines 11–32 | **Adapt** for VectorAdd and A1. Lines 27–28 already perform one independent addition per element. Rank/tiling, explicit dtype arguments, boundary predicates and operand order can change without introducing a recurrence or replacing arithmetic. Shared/fragment staging at lines 20–30 is a starting point, not a proof that boundary handling is already identical. |
 | [online softmax](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/online_softmax/online_softmax.py#L7-L45), `softmax_kernel`, lines 7–45 | **Write** OnlineSoftmax, SoftmaxStable and A2. The chunked log-sum-exp recurrence with `exp2`/`log2` is neither the worked example's scalar two-pass running max/sum graph nor A2's single-row max/exp/sum graph with an optional additive mask. Changing that recurrence exceeds adaptation; FP16 defaults are not the reason. |
 | [layer normalization](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/norm/layernorm.py#L6-L58), `_layernorm_fwd`, lines 6–58 | **Write** Welford. Sum and sum-of-squares, affine parameters and reciprocal standard deviation do not preserve the selected two-pass/online mean-and-variance pair. Replacing these operations and the online recurrence fails the reuse test. |
-| [GEMM](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/gemm/example_gemm.py#L6-L26), `matmul`, lines 6–26 | **Write** B1. Its pipelined tile copies and `T.gemm` (lines 19–22) differ from [matmul_triton1, lines 6–49](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matmul_triton1/matmul_triton1.py#L6-L49): explicit stride arithmetic, loads masked on M/N/K tails, and accumulation of `tl.dot(..., allow_tf32=False)` in a K loop. Strides/tails alone could be adaptation, but preserving the contraction and accumulation contract requires an explicit new correspondence; setting dtype to FP32 does not supply it. |
-| [flash attention](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/flash_attention/example_mha_fwd_bhsd.py#L23-L102), `flashattn`, lines 23–102 | **Write** C1. Its dimension-derived scale (line 24), `T.gemm` operations (75, 95) and online update (77–98) do not implement the selected task's Q/K scale loads and products, fixed-width dimension masks, FP16 conversions and second dot's explicit FP16 result (selected helper lines 17–33). These alter the arithmetic/conversion sequence, not just tensor parameters. |
+| [GEMM](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/gemm/example_gemm.py#L6-L26), `matmul`, lines 6–26 | **Test result: adapt; confirmed choice: written by us (conflict).** Both this source (lines 18–24) and [matmul_triton1, lines 6–49](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matmul_triton1/matmul_triton1.py#L6-L49) clear an accumulator, loop over K tiles, accumulate a matrix product and store. Dtype arguments, explicit strides and masked M/N/K tails are permitted adaptations under the stated rule. `T.gemm` versus `tl.dot(..., allow_tf32=False)` still needs a numerical correspondence proof, but that unresolved obligation does not make this structural test yield “write.” The confirmed source choice stays unchanged; this is a reported criterion/choice conflict. |
+| [flash attention](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/flash_attention/example_mha_fwd_bhsd.py#L23-L102), `flashattn`, lines 23–102 | **Write** C1. Its dimension-derived scale (line 24) differs from the selected task's [Q scale load, line 79](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/attention_fwd_triton2/attention_fwd_triton2.py#L79), and [K scale load/product, dimension masks, V conversion to FP16 and second dot's FP16 result, lines 17–33](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/attention_fwd_triton2/attention_fwd_triton2.py#L17-L33). The upstream source already converts scores to FP16 before the second product (lines 46, 89); that shared conversion is not a rejection reason. The differences concern block scaling, masks, V's explicit conversion and the second-product result type (upstream V is already FP16 and its output accumulator is FP32, lines 27–28, 37, 47, 95). These require a different arithmetic/conversion sequence, beyond parameter adaptation. |
 
-All five applications retain the confirmed source choices; no selection conflict
-was found. The shared/fragment allocations in GEMM and flash attention inform the
-planned storage only; they do not supply matching arithmetic or synchronization.
+The confirmed source choices remain unchanged. The rule supports four choices
+but yields **adapt** for GEMM, in conflict with its confirmed **written by us**
+choice; the previous claim that no conflict existed is withdrawn. The conflict
+is recorded for review without changing the selection. Shared/fragment
+allocations alone do not supply numerical correspondence or synchronization.
 
 ## Six provisional benchmark representatives
 
@@ -93,7 +95,7 @@ the intended categories. Their assignment file is not delivered at the inspectio
 baseline, so the selections are provisional and must be reconciled with #130.
 The six representatives select the named original entrypoints and all their
 required branches. They do **not** select every comparison in the source file.
-The nine worked examples above still retain both sides of each pair. The four
+The nine worked examples above still retain both sides of each pair. The five
 family files with comparisons leave these additional entrypoints outside this
 selection (all links use the benchmark pin):
 
@@ -103,6 +105,7 @@ selection (all links use the benchmark pin):
 | softmax_triton3 | [guarded_reciprocal_kernel, lines 86–115](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/softmax_triton3/softmax_triton3.py#L86-L115) |
 | matrix_transpose | [kernel_index_commuted, lines 28–44](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matrix_transpose/matrix_transpose.py#L28-L44) |
 | attention_fwd_triton2 | [_attn_fwd_inner_index_shift, lines 160–190, and its _attn_fwd_index_shift caller, lines 194–238](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/attention_fwd_triton2/attention_fwd_triton2.py#L160-L238) |
+| rotary_transform | [rotary_kernel_index_cse, lines 213–277 (including decorator)](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/rotary_transform/rotary_transform.py#L213-L277) |
 
 For #233, “proved against the same specification” therefore remains an obligation
 to connect each TileLang original to the selected task's existing independent
@@ -118,7 +121,7 @@ is not coverage of every kernel, operation, dtype or branch in a family.
 | --- | --- | --- | --- |
 | [A1: elementwise, activation, sampling](https://github.com/dnyBLUESKY007/VeriTile/issues/131) | [vector_addition](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/vector_addition/vector_addition.py) — `add_kernel` (lines 15–28) | Adapt the same [elementwise add](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/examples/elementwise/example_elementwise_add.py) starting point. | Global input/output; shared+fragment TileLang staging. Preserve the FP32 contiguous host contract and masked tail, which distinguishes this task from unmasked VectorAdd. |
 | [A2: normalization, softmax, reductions, losses](https://github.com/dnyBLUESKY007/VeriTile/issues/132) | [softmax_triton3](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/softmax_triton3/softmax_triton3.py) — `softmax_kernel` (lines 8–31) | Written by us. | Global FP32 input/output and optional mask; planned fragment reduction intermediates. Preserve optional additive mask after row-max subtraction, masked tail and last-axis host contract. |
-| [B1: matmul and quantization](https://github.com/dnyBLUESKY007/VeriTile/issues/133) | [matmul_triton1](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matmul_triton1/matmul_triton1.py) — `matmul_kernel` (lines 6–49) | Written by us; related TileLang GEMM is not directly reused. | Global FP32 A/B/C; planned shared operand tiles and fragment accumulator. Preserve strided indexing, masked tails, K-loop and arithmetic contract; the intrinsic/loop correspondence must be written explicitly (see reuse test above). |
+| [B1: matmul and quantization](https://github.com/dnyBLUESKY007/VeriTile/issues/133) | [matmul_triton1](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matmul_triton1/matmul_triton1.py) — `matmul_kernel` (lines 6–49) | Written by us; retained confirmed choice despite the reuse-test conflict above. | Global FP32 A/B/C; planned shared operand tiles and fragment accumulator. Preserve strided indexing, masked tails, K-loop and arithmetic contract; the intrinsic/loop correspondence must be written explicitly (see reuse test above). |
 | [B2: copy, indexing, cumsum, cache](https://github.com/dnyBLUESKY007/VeriTile/issues/134) | [matrix_transpose](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matrix_transpose/matrix_transpose.py) — `kernel` (lines 9–24) | Written by us. | Global FP16 matrix/output; planned fragment tile, no shared allocation. Preserve the single-tile power-of-two shape contract and explicit transpose. |
 | [C1: attention](https://github.com/dnyBLUESKY007/VeriTile/issues/135) | [attention_fwd_triton2](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/attention_fwd_triton2/attention_fwd_triton2.py) — `_attn_fwd_inner` (lines 8–38), `_attn_fwd` (lines 42–86) | Written by us; related flash-attention example is not directly reused. | Global Q/K/V, scaling tensors and output; planned shared Q/K/V staging and fragment online accumulators. Preserve per-block scales, masked fixed-width dimensions, accumulation/conversion order and launch envelope. |
 | [C2: recurrent, chunked sequence, rotary, concurrent tasks](https://github.com/dnyBLUESKY007/VeriTile/issues/136) | [rotary_transform](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/rotary_transform/rotary_transform.py) — `rotary_kernel` (lines 7–70) | Written by us. | Global input/output, cosine/sine and optional sequence metadata; planned fragment arithmetic. Preserve variable-length versus fixed-length, offset modes, interleaved layout and conjugate branches; select the task rather than silently only its simplest branch. |
@@ -144,6 +147,12 @@ claimed.
 
 **Criterion:** Choose a two-input addition with a masked tail: it gives a direct contrast with the unmasked VectorAdd worked example and shares the elementwise starting point.
 
+**Tie:** [add_example, lines 15–29](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/add_example/add_example.py#L15-L29)
+and [vector_addition_custom, lines 13–19](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/vector_addition_custom/vector_addition_custom.py#L13-L19)
+also meet this criterion. No technical tie-break was applied: the choice of
+vector_addition among these candidates is arbitrary and was confirmed with the
+list on 2026-11-12.
+
 | Rejected name group | All rejected candidates | Reason |
 | --- | --- | --- |
 | `add_*`, `vector_addition*` | `add_example`, `add_value`, `vector_addition_custom` | One addition representative is enough; vector_addition supplies the masked contiguous FP32 contract already cited above, so additional addition siblings are not selected. |
@@ -167,6 +176,11 @@ claimed.
 
 **Criterion:** Choose the explicit two-input matrix product with stride arithmetic, masked M/N/K tails and an inspectable K loop, before adding quantization, batching or fused operations.
 
+**Tie:** [matmul_triton2, lines 19–60](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/matmul_triton2/matmul_triton2.py#L19-L60)
+also meets this criterion. The choice of matmul_triton1 between these candidates
+is arbitrary, not a conclusion that its sibling lacks the required structure;
+it was confirmed with the list on 2026-11-12.
+
 | Rejected name group | All rejected candidates | Reason |
 | --- | --- | --- |
 | `matmul_*` | `matmul_dequant_int4`, `matmul_dequantize`, `matmul_dequantize_int4`, `matmul_kernel`, `matmul_leakyrelu`, `matmul_leakyrelu_fp8`, `matmul_persistent_triton`, `matmul_tma`, `matmul_triton2`, `matmul_triton_autotune` | Keep the cited explicit K-loop matmul_triton1 as the single matrix-product representative; other matmul-named alternatives are not claimed inferior or equivalent. |
@@ -188,6 +202,11 @@ claimed.
 
 **Criterion:** Choose an attention original whose helper exposes Q/K block scales, fixed-width dimension masks, online state and explicit precision conversions in one inspected pair of entrypoints.
 
+**Tie:** [attention_forward_triton, lines 7–82](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/attention_forward_triton/attention_forward_triton.py#L7-L82)
+also meets this criterion. The choice of attention_fwd_triton2 between these
+candidates is arbitrary and was confirmed with the list on 2026-11-12; the
+criterion does not establish a unique winner.
+
 | Rejected name group | All rejected candidates | Reason |
 | --- | --- | --- |
 | `attention_*`, `attn_*` | `attention_forward_triton`, `attention_fwd_triton1`, `attention_fwd_triton3`, `attention_kernel`, `attention_kernel_aligned`, `attention_llama`, `attention_score`, `attn_fwd_causal`, `attn_fwd_triton` | Keep attention_fwd_triton2 for the cited scales/masks/conversions combination; the remaining attention/attn siblings receive no additional slot, without asserting that they are equivalent. |
@@ -197,6 +216,11 @@ claimed.
 #### C2: 25 matches, select `rotary_transform`
 
 **Criterion:** Choose a rotary original that exposes fixed/variable lengths, offset modes, interleaving and conjugation branches; retain every branch rather than selecting only its simplest mode.
+
+**Tie:** [rotary_transform_ops, lines 9–119](https://github.com/VeriInfra-Lab/VeriTileBench/blob/39f6669cd2d714c31940256a326b8b0373f5bb7f/bench/tritonbench_g/rotary_transform_ops/rotary_transform_ops.py#L9-L119)
+also meets this criterion. The choice of rotary_transform between these
+candidates is arbitrary and was confirmed with the list on 2026-11-12; retaining
+its branches does not distinguish it from that sibling.
 
 | Rejected name group | All rejected candidates | Reason |
 | --- | --- | --- |
