@@ -222,4 +222,55 @@ example (N : Nat) : (with_triton_signature profile in triton {
     x -= 1
 } := rfl
 
+-- Procedure validation sees the same ordinary range binder; instantiation and
+-- calls still use the existing ABI, scope and immutable-parameter checks.
+def rangeProcedure : SourceProcedure :=
+  with_triton_params (N) constexpr_args [N] in triton {
+    for i in tl.range(N, step=2, loop_unroll_factor=1):
+      x = i
+  }
+
+def explicitRangeProcedure : SourceProcedure :=
+  triton_source_procedure (N) constexpr_args [N] fp32_constants [] {
+    for i in tl.range(N, step=2, loop_unroll_factor=1):
+      x = i
+  }
+
+def baselineProcedure : SourceProcedure :=
+  with_triton_params (N) constexpr_args [N] in triton {
+    for i in range(0, N, 2):
+      x = i
+  }
+
+example (N : Nat) :
+    (instantiate_source_procedure rangeProcedure signature profile procedure_args [N := N] : ComputeKernel) =
+    instantiate_source_procedure baselineProcedure signature profile procedure_args [N := N] := rfl
+
+example (N : Nat) :
+    (instantiate_source_procedure explicitRangeProcedure signature profile procedure_args [N := N] : ComputeKernel) =
+    instantiate_source_procedure baselineProcedure signature profile procedure_args [N := N] := rfl
+
+example (N : Nat) :
+    (with_triton_call profile call_args [] source_procedures [helper := rangeProcedure] in triton {
+      helper(N)
+    } : ComputeKernel) =
+    with_triton_call profile call_args [] source_procedures [helper := baselineProcedure] in triton {
+      helper(N)
+    } := rfl
+
+/-- error: procedure loop cannot rebind a parameter -/
+#guard_msgs in
+example : SourceProcedure := with_triton_params (N) constexpr_args [N] in triton {
+  for N in tl.range(4):
+    x = N
+}
+
+/-- error: source constexpr parameters remain immutable -/
+#guard_msgs in
+example : SourceProcedure :=
+  triton_source_procedure (N) constexpr_args [N] fp32_constants [] {
+    for i in tl.range(N):
+      N = i
+  }
+
 end VeriTile.Tests.Dist.TritonExtParsing

@@ -24,9 +24,10 @@ The upstream expander is unchanged. These term elaborators rewrite the new
 spellings before delegating to it; call-source rewriting precedes its checked
 constexpr specialization. This module does not implement the other semantic
 and constexpr gaps assigned to #77 by the census. Its source hooks cover
-`with_triton_signature` and `with_triton_call`; helper-specific source entrypoints
-need the separately tracked source-binding work.
+`with_triton_signature`, `with_triton_call` and source-procedure definitions;
+other helper bindings and effects need the separately tracked source work.
 -/
+import VeriTile.Triton.DSL.SourceProcedures
 import VeriTile.Triton.DSL.PythonFullConstructors
 
 namespace VeriTile.Dist.Frontend.TritonExt
@@ -106,7 +107,9 @@ def elaborateRange : TermElab := fun stx expected => do
 -- Rewrite before call-signature specialization so constexpr bounds take the
 -- same path as the corresponding Python range.
 @[term_elab VeriTile.Triton.DSL.CallSignature.withSignature,
-  term_elab VeriTile.Triton.DSL.CallSignature.withCall]
+  term_elab VeriTile.Triton.DSL.CallSignature.withCall,
+  term_elab VeriTile.Triton.DSL.SourceProcedures.sourceParams,
+  term_elab VeriTile.Triton.DSL.SourceProcedures.sourceProcedure]
 def elaborateRangeSource : TermElab := fun stx expected => do
   let raw := stx.getArgs.back!
   let .ok source := RawSourceText.normalize raw.getAtomVal | throwUnsupportedSyntax
