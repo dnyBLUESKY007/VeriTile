@@ -2,7 +2,8 @@
 
 Status: revision of ticket S2.2 that applies the user's decisions of
 2026-11-12 (section 9). The user has not reviewed this revision. Sources were
-read on 2026-11-11. Nothing here is a proved result; the table fixes what the
+read on 2026-11-11; NVSHMEM archive passages and the S6.8 additions were
+rechecked on 2026-11-13. Nothing here is a proved result; the table fixes what the
 semantics of `VeriTile/Dist/` may assume about each primitive.
 
 The table has one row per primitive of Triton-distributed (`dl.*`,
@@ -43,11 +44,12 @@ cited here has the same text at both (E-TR1).
 is the one on the GPU node: 3.6.5, in the `triton-dist` environment. The
 `triton` environment has 3.3.20, only as a dependency of PyTorch; it is not
 the version of record. Both numbers are taken from the decision; this revision
-did not check them again. The documentation that was read is `latest`, which
-reports 3.8.0 (section 3). Rule: a proof may rely only on guarantees that
+did not check them again. The first reading used `latest` (3.8.0); S6.8 reads
+the frozen 3.6.5 archive and compares it with `latest` (sections 3 and 4.2).
+Rule: a proof may rely only on guarantees that
 already hold in 3.6.5. An item that the release notes date after 3.6.5 is
-flagged in its row as "not relied on". An item that cannot be dated is flagged
-as "undated, not relied on". Decision D7 lists the items.
+flagged in its row as "not relied on"; an item absent from the frozen archive
+is likewise not relied on. Decision D7 lists the excluded items.
 
 **Patterns.**
 
@@ -97,10 +99,11 @@ names by a script: every name has exactly one row and no row is extra.
 | `dl.tma.*` | `__all__` of `python/triton_dist/language/tma/__init__.py`, without its 6 encoding constants | 5 |
 | `libshmem_device.*` | top-level functions of `extra/libshmem_device.py` (85), plus `sync`, which only the CUDA back end defines | 86 |
 | `language_extra` | top-level functions of `extra/language_extra.py` (13) united with those of `extra/cuda/language_extra.py` (50); 10 names are in both. A helper whose name starts with one underscore is private and not listed | 53 |
-| TileScale, kernel side | top-level functions of `tilelang/language/distributed/{common,comm,sync,multimem}.py` (27), plus the functions of `copy_op.py`, `atomic.py` and `builtin.py` that take `src_pe` or `dst_pe` (4) | 31 |
+| TileScale, kernel side | top-level functions of `tilelang/language/distributed/{common,comm,sync,multimem}.py` (27), plus the functions of `copy_op.py`, `atomic.py` and `builtin.py` that take `src_pe` or `dst_pe` (4), and `fence_gpu`/`fence_sys` from `builtin.py` (2; S6.8) | 33 |
 | TileScale, host side | the signal utilities of `tilelang/distributed/host.py` | 2 |
 | Further names of the tutorials in scope | the three names that the decision of 2026-11-12 adds: `set_signal` and `wait_eq` of `triton_dist.kernels.common_ops`, and base Triton `tl.atomic_add` with `sem` and `scope` | 3 |
-| Total | | 205 |
+| K-M imported common helpers | the three used names in pinned `python/triton_dist/kernels/nvidia/common_ops.py`, section 5.8 | 3 |
+| Total | | 210 |
 
 The three names of section 5.7 were not enumerated. They come from the
 decision and were located in tutorials 06, 07 and 08 by search.
@@ -127,7 +130,9 @@ row.
 
 Paths with prefix `TD:` are in Triton-distributed at `7908e4e`; paths with
 prefix `TS:` are in TileScale at `71e7145`; paths with prefix `TR:` are in
-Triton at `v3.5.1`. Every URL was accessed on 2026-11-11.
+Triton at `v3.5.1`. Original URLs were accessed on 2026-11-11; the NVSHMEM
+archive/latest comparison, CU-MM atomicity condition and pinned S6.8 additions
+were read on 2026-11-13.
 
 | ID | Source |
 | --- | --- |
@@ -143,7 +148,7 @@ Triton at `v3.5.1`. Every URL was accessed on 2026-11-11.
 | TD-SH | `TD:python/triton_dist/language/extra/libshmem_device.py` (names; seven docstrings) |
 | TD-SHC | `TD:python/triton_dist/language/extra/cuda/libnvshmem_device.py` (names and bound routine names only) |
 | TD-LEC | `TD:python/triton_dist/language/extra/cuda/language_extra.py` (names; two docstrings) |
-| TD-KCO | `TD:python/triton_dist/kernels/common_ops.py`, `TD:python/triton_dist/kernels/nvidia/common_ops.py` (names and bound routine names only) |
+| TD-KCO | `TD:python/triton_dist/kernels/common_ops.py`, `TD:python/triton_dist/kernels/nvidia/common_ops.py` (names, bound routines and the atomic-support docstring at lines 155–157) |
 | TR-CORE | `TR:python/triton/language/core.py` (docstring of `atomic_add`) |
 | TR-API | `TR:docs/python-api/triton.language.rst`, which lists `atomic_add`; its page is generated from the docstring. Rendered for `main`: <https://triton-lang.org/main/python-api/generated/triton.language.atomic_add.html> |
 | TS-API | `TS:docs/distributed_api_reference.md` |
@@ -151,27 +156,31 @@ Triton at `v3.5.1`. Every URL was accessed on 2026-11-11.
 | TS-SYNC | `TS:tilelang/language/distributed/sync.py` (docstrings) |
 | TS-MM | `TS:tilelang/language/distributed/multimem.py` (docstrings) |
 | TS-COPY | `TS:tilelang/language/copy_op.py` (docstrings) |
+| TS-BUILTIN | `TS:tilelang/language/builtin.py`, docstrings at lines 1194–1201 |
 | TS-ATOM | `TS:tilelang/language/atomic.py` (docstrings) |
-| NV-MM | NVSHMEM 3.8.0, Memory Model: <https://docs.nvidia.com/nvshmem/api/latest/gen/mem-model.html> |
-| NV-ORD | NVSHMEM 3.8.0, Memory Ordering: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/ordering.html> |
-| NV-RMA | NVSHMEM 3.8.0, Remote Memory Access: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/rma.html> |
-| NV-SIG | NVSHMEM 3.8.0, Signaling Operations: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/signal.html> |
-| NV-SYNC | NVSHMEM 3.8.0, Point-To-Point Synchronization: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/sync.html> |
-| NV-COLL | NVSHMEM 3.8.0, Collective Communication: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/collectives.html> |
-| NV-SETUP | NVSHMEM 3.8.0, Library Setup, Exit, and Query: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/setup.html> |
-| NV-TEAM | NVSHMEM 3.8.0, Team Management: <https://docs.nvidia.com/nvshmem/api/latest/gen/api/teams.html> |
-| NV-OVER | NVSHMEM 3.8.0, API overview: <https://docs.nvidia.com/nvshmem/api/latest/api/overview.html> |
-| NV-FAQ | NVSHMEM 3.8.0, FAQ: <https://docs.nvidia.com/nvshmem/api/latest/faq.html> |
+| NV-MM | NVSHMEM 3.6.5, Memory Model: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html> |
+| NV-ORD | NVSHMEM 3.6.5, Memory Ordering: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html> |
+| NV-RMA | NVSHMEM 3.6.5, Remote Memory Access: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html> |
+| NV-SIG | NVSHMEM 3.6.5, Signaling Operations: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html> |
+| NV-SYNC | NVSHMEM 3.6.5, Point-To-Point Synchronization: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/sync.html> |
+| NV-COLL | NVSHMEM 3.6.5, Collective Communication: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html> |
+| NV-SETUP | NVSHMEM 3.6.5, Library Setup, Exit, and Query: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html> |
+| NV-TEAM | NVSHMEM 3.6.5, Team Management: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/teams.html> |
+| NV-OVER | NVSHMEM 3.6.5, API overview: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/api/overview.html> |
+| NV-FAQ | NVSHMEM 3.6.5, FAQ: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/faq.html> |
+| NV-USE | NVSHMEM 3.6.5, Using NVSHMEM: <https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html> |
+| NV-LATEST | Comparison only: the same paths under <https://docs.nvidia.com/nvshmem/api/latest/> (3.8.0); E-NV22–E-NV24 are historical observations, not 3.6.5 guarantees |
 | NV-REL | NVSHMEM release notes 3.6.5, 3.7.0, 3.7.1, 3.7.2 and 3.8.0: <https://github.com/NVIDIA/nvshmem/releases>. Used to date items, not as a source of guarantees |
 | CU-MM | libcu++, Memory model: <https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/memory_model.html> |
 | CU-AT | libcu++, `cuda::atomic`: <https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/synchronization_primitives/atomic.html> |
 | CU-FE | libcu++, `cuda::atomic_thread_fence`: <https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/synchronization_primitives/atomic/atomic_thread_fence.html> |
 
-The NVSHMEM pages are served under `latest` only; a path with the version
-number returned 404, and the archive index of the documentation lists no 3.x
-version. The pages report version 3.8.0. The version of record is 3.6.5
-(section 1). Its documentation text could not be obtained: the documentation
-is not part of the NVSHMEM source repository.
+The frozen 3.6.5 manual is linked by the [official version index](https://docs.nvidia.com/nvshmem/api/versions1.json).
+All eleven archive pages in the table returned HTTP 200 and report
+`docsearch:version=3.6.5`; the same eleven `latest` paths report 3.8.0.
+The earlier claim that only `latest` was available was incorrect. Section 4.2's
+comparison checks every E-NV item against 3.6.5; no absence of a release-note
+entry is used as proof of unchanged documentation.
 
 The first draft of this document said that the text had changed since the
 research ticket #11 read it on 2026-10-20. This revision could not confirm
@@ -283,18 +292,18 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
 
 ### 4.2 NVSHMEM
 
+The quotations below are from 3.6.5 unless marked `latest only`. The
+comparison table identifies the archive page for every item and quotes changed
+wording beside the version-of-record evidence.
+
 - **E-NV1** (NV-ORD, `nvshmem_fence`). "All operations on symmetric data
   objects issued to a particular PE prior to the call to `nvshmem_fence` are
   guaranteed to be delivered before any subsequent operations on symmetric data
   objects to the same PE. `nvshmem_fence` guarantees order of delivery, not
   completion." It "can enforce memory store ordering only for the calling
   thread" and "does not have an effect on the ordering between memory accesses
-  issued by the target PE".
-- **E-NV2** (NV-ORD, `nvshmem_quiet`). It "ensures completion of all operations
-  on symmetric data objects issued by the calling PE". It "is a local,
-  non-collective operation"; "the call does not synchronize with or notify
-  other PEs". "Visibility is only guaranteed at the destination PE." It covers
-  the operations "posted before calling" by the calling thread.
+  issued by the target PE". The Notes also say: "nvshmem_quiet guarantees completion of all operations on symmetric data objects which makes the updates visible to all other PEs." This unconditional wording is part of the D2 conflict (section 10 item 4).
+- **E-NV2** (NV-ORD, `nvshmem_quiet`, 3.6.5). It "ensures completion of all operations on symmetric data objects issued by the calling PE". "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE." "A call to nvshmem_quiet by a thread completes the operations posted prior to calling nvshmem_quiet." The local/non-collective and non-notification wording is absent from 3.6.5; the comparison below quotes the newer wording.
 - **E-NV3** (NV-ORD, table; NV-MM, "Ordering of Operations"). The table marks
   memory store, blocking put and blocking AMO under both Fence and Quiet,
   non-blocking put under both, and blocking get under neither. NV-MM says:
@@ -336,23 +345,22 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
   "complete as if performed atomically with respect to" other signal
   operations, signal-fetch and "any point-to-point synchronization routine that
   accesses the signal data object using the same datatype". Undefined
-  behaviour: "When NVSHMEM atomic operations and non-NVSHMEM operations (for
-  example, load and store operations) are used to access the same location
+  behaviour: "When NVSHMEM atomic operations and non-NVSHMEM operations (e.g.,
+  load and store operations) are used to access the same location
   concurrently."
 - **E-NV13** (NV-COLL, `nvshmem_barrier_all`, `nvshmem_barrier`). It "blocks
   the calling PE until all PEs have called `nvshmem_barrier_all`". Before that
   it "ensures completion of all previously issued memory stores and remote
-  memory updates". The team form does the same over a team.
+  memory updates". The team form does the same over a team. The team-barrier description further states: "nvshmem_barrier ensures that all previously issued stores and remote memory updates, including AMOs and RMA operations, done by any of the PEs in the active set are complete before returning. On systems with only NVLink, updates are globally visible, whereas on systems with both NVLink and InfiniBand, NVSHMEM only guarantees that updates to the memory of a given PE are visible to that PE."
 - **E-NV14** (NV-COLL, `nvshmem_sync`, `nvshmem_sync_all`). It blocks until all
   PEs of the team have called it and "only ensures completion and visibility of
   previously issued memory stores and does not ensure completion of remote
-  memory updates issued through NVSHMEM routines".
+  memory updates issued via NVSHMEM routines".
 - **E-NV15** (NV-MM, "Visibility Guarantees"). On systems with NVLink and
   InfiniBand the synchronization operations "only guarantee visibility of
   updates to the local PE's symmetric objects. However, on systems with only
   NVLink, these operations guarantee global visibility".
-- **E-NV16** (NV-OVER, "NVSHMEM API Extensions for GPU Threads"). "The `_block`
-  and `_warp` extension APIs are collective calls that must be called by every
+- **E-NV16** (NV-OVER, NVSHMEM API Extensions for GPU Threads). "These extension APIs are collective calls that must be called by every
   thread in the scope of the API and with exactly the same arguments."
   Otherwise "the call results in erroneous behavior or a deadlock".
 - **E-NV17** (NV-SETUP, `nvshmem_ptr`). It "returns an address that may be used
@@ -361,8 +369,7 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
   be reached by loads and stores.
 - **E-NV18** (NV-SETUP, `nvshmemx_mc_ptr`). It "returns a multicast address
   corresponding to the specified symmetric address and the team", for use with
-  multimem operations "exclusively". The page states no semantics for those
-  operations.
+  multimem operations "exclusively". The hardware condition names "third-generation NVSwitch systems (NVLink4) with Hopper and later GPU architectures". "On unsupported platforms, this API returns a nullptr." Passing this multicast address to an NVSHMEM argument requiring a symmetric address "results in undefined behavior." These excerpts document the pointer requirement, not helper atomicity or reduction order; the access/conflict text is E-NV27.
 - **E-NV19** (NV-SETUP, NV-TEAM). `nvshmem_my_pe` returns "an integer between
   0 and npes - 1"; `nvshmem_n_pes` "the number of PEs running in the program".
   `nvshmem_team_my_pe`, `nvshmem_team_n_pes` and `nvshmem_team_translate_pe`
@@ -373,10 +380,8 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
   "Concurrent accesses to symmetric memory by an NVSHMEM collective routine and
   any other means of access—where at least one updates the symmetric
   memory—results in undefined behavior."
-- **E-NV21** (NV-FAQ). "For synchronization with flag, the application must use
-  `nvshmem_wait_until` or `nvshmem_test` API. A plain while loop or if
-  condition to check flag value is not sufficient."
-- **E-NV22** (NV-ORD, notes of `nvshmem_fence` and `nvshmem_quiet` on GPU
+- **E-NV21** (NV-FAQ). "For synchronization with flag, the application must use nvshmem_wait_until or nvshmem_test API. A plain while loop or if condition to check flag value is not sufficient. NVSHMEM needs to perform consistency operation to ensure that the data is visible to the GPU after synchronization using flag value."
+- **E-NV22** (`latest only`, NV-LATEST ordering page, notes of `nvshmem_fence` and `nvshmem_quiet` on GPU
   threads). "In device code, making an operation visible to the thread that
   calls `nvshmem_fence` means ensuring that the operation has been issued
   before the fence is called". "after a block-scoped Put operation returns and
@@ -385,17 +390,17 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
   same rule applies to GPU threads. If multiple threads issue NVSHMEM
   operations and then synchronize so that those operations have been issued
   before a single elected thread calls `nvshmem_quiet`, the single
-  `nvshmem_quiet` call completes the preceding operations."
-- **E-NV23** (NV-ORD, `nvshmemx_flush`, `_warp`, `_block`, `_on_stream`). The
+  `nvshmem_quiet` call completes the preceding operations." Absent from the corresponding 3.6.5 archive page; not relied on (D7).
+- **E-NV23** (`latest only`, NV-LATEST ordering page, `nvshmemx_flush`, `_warp`, `_block`, `_on_stream`). The
   routines "ensure local completion of outstanding nonblocking Put operations
   issued by the calling PE". "Flush does not guarantee that data is visible at
-  the destination PE and does not replace `nvshmem_quiet` or `nvshmem_fence`."
-- **E-NV24** (NV-SIG, counted signals). "The NVSHMEM counted signaling
+  the destination PE and does not replace `nvshmem_quiet` or `nvshmem_fence`." Absent from the corresponding 3.6.5 archive page; not relied on (D7).
+- **E-NV24** (`latest only`, NV-LATEST signal page, counted signals). "The NVSHMEM counted signaling
   extensions copy a payload and increment a remote counter by the number of
   bytes delivered. They also provide operations to reset, load, and wait on
   the counted signal data object." The routines are
   `nvshmemx_signal_counted_reset`, `_load`, `_wait_until` and
-  `nvshmemx_putmem_signal_counted_nbi_block`.
+  `nvshmemx_putmem_signal_counted_nbi_block`. Absent from the corresponding 3.6.5 archive page; not relied on (D7).
 - **E-NV25** (NV-REL). 3.6.5 was published on 2026-03-24. 3.7.0 (2026-06-11):
   "Added `nvshmemx_flush` APIs to provide source-buffer reusability without
   guaranteeing remote visibility." 3.8.0 (2026-09-22): "Added counted-signal
@@ -407,8 +412,45 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
   and of 3.8.0). "`nvshmem_barrier*`, `nvshmem_quiet`, and `nvshmem_wait_until`
   only ensure ordering and visibility between the source and destination PEs.
   They *do not* ensure global ordering and visibility."
+- **E-NV27** (NV-USE, Data Consistency). The access list includes "Direct multimem load reduce and store broadcast operations (for example, using a pointer that was returned by nvshmemx_mc_ptr)". "Two operations that were issued by the same PE or different PEs, and that access the same memory location in parallel, are in conflict when one or more of the operations performs a write. These conflicts result in undefined behavior in the OpenSHMEM memory model. An exception is made when the operations are a combination of AMOs or AMOs and wait/test operations. A second exception is made when the operations are a combination of signal updates and wait/test operations." "Updates to globally accessible objects are unordered. A PE can enforce the ordering of its updates with respect to accesses performed by the target PE using the nvshmem_fence operation. When updates performed by a PE must be ordered or made visible to PEs other than the target PE, use the nvshmem_quiet operation." No direct reduce-store, reduction order or atomic multicast operation is specified by this access list. See [MultimemSources](MultimemSources.md).
 
 No binding of TD-SHC names a flush routine or a counted-signal routine.
+
+#### Comparison against the frozen 3.6.5 manual
+
+“Same” refers to the passages used in the entry, not to entire pages. Every API
+URL below returned 200 and version 3.6.5 on 2026-11-13. Release entries E-NV25/26
+are explicitly release-note evidence, not version-tagged API pages.
+
+| Evidence | 3.6.5 source | Comparison with the previous `latest` evidence |
+| --- | --- | --- |
+| E-NV1 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-fence) | Same in 3.6.5. |
+| E-NV2 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) | Different: explicit NVLink-only global visibility; mixed-fabric destination visibility. No local/non-collective or non-notification wording. Thread note uses prior rather than before. 3.6.5 wording: "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE."; "A call to nvshmem_quiet by a thread completes the operations posted prior to calling nvshmem_quiet." Latest wording: "is a local, non-collective operation"; "the call does not synchronize with or notify other PEs"; "Visibility is only guaranteed at the destination PE."; "posted before calling" (NV-LATEST). |
+| E-NV3 | [ordering](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html), [memory model](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#ordering-of-operations) | Same in 3.6.5. |
+| E-NV4 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html#nvshmem-put) | Same in 3.6.5. |
+| E-NV5 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html#nvshmem-put-nbi) | Same in 3.6.5. |
+| E-NV6 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html) | Same in 3.6.5. |
+| E-NV7 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html#nvshmem-p) | Same in 3.6.5. |
+| E-NV8 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html#nvshmem-put-signal) | Same in 3.6.5. |
+| E-NV9 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html#nvshmem-put-signal-nbi) | Same in 3.6.5. |
+| E-NV10 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html#nvshmemx-signal-op) | Same in 3.6.5. |
+| E-NV11 | [gen/api/sync.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/sync.html#nvshmem-signal-wait-until) | Same in 3.6.5. |
+| E-NV12 | [memory model](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#atomicity-guarantees), [signals](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html) | Same guarantee; `e.g.` rather than `for example` in NV-MM (signal atomicity passage unchanged). 3.6.5 wording: "When NVSHMEM atomic operations and non-NVSHMEM operations (e.g., load and store operations) are used to access the same location concurrently." Latest wording: "When NVSHMEM atomic operations and non-NVSHMEM operations (for example, load and store operations) are used to access the same location concurrently." (NV-LATEST). |
+| E-NV13 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html) | Same in 3.6.5. |
+| E-NV14 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-sync) | Same guarantee; `via` rather than `through`. 3.6.5 wording: "only ensures completion and visibility of previously issued memory stores and does not ensure completion of remote memory updates issued via NVSHMEM routines". Latest wording: "only ensures completion and visibility of previously issued memory stores and does not ensure completion of remote memory updates issued through NVSHMEM routines" (NV-LATEST). |
+| E-NV15 | [gen/mem-model.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#visibility-guarantees) | Same in 3.6.5. |
+| E-NV16 | [api/overview.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/api/overview.html) | Same guarantee; `These extension APIs` rather than repeating the two suffixes. 3.6.5 wording: "These extension APIs are collective calls that must be called by every thread in the scope of the API and with exactly the same arguments." Latest wording: "The `_block` and `_warp` extension APIs are collective calls that must be called by every thread in the scope of the API and with exactly the same arguments." (NV-LATEST). |
+| E-NV17 | [gen/api/setup.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html#nvshmem-ptr) | Same in 3.6.5. |
+| E-NV18 | [gen/api/setup.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html#nvshmemx-mc-ptr) | Same in 3.6.5. |
+| E-NV19 | [teams](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/teams.html), [queries](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html) | Same in 3.6.5. |
+| E-NV20 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html) | Same in 3.6.5. |
+| E-NV21 | [faq.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/faq.html) | Same in 3.6.5. |
+| E-NV22 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html) | Absent from 3.6.5: both later GPU-thread notes. |
+| E-NV23 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html) | Absent from 3.6.5: flush APIs. |
+| E-NV24 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html) | Absent from 3.6.5: counted signals. |
+| E-NV25 | [3.6.5](https://github.com/NVIDIA/nvshmem/releases/tag/v3.6.5-0), [3.7.0](https://github.com/NVIDIA/nvshmem/releases/tag/v3.7.0-0), [3.8.0](https://github.com/NVIDIA/nvshmem/releases/tag/v3.8.0-0) release notes | Release history: later additions/fix belong to 3.7.0/3.8.0, not this manual. |
+| E-NV26 | [3.6.5 release notes](https://github.com/NVIDIA/nvshmem/releases/tag/v3.6.5-0) | Same limitation in 3.6.5; manual conflict remains open. |
+| E-NV27 | [using.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html#data-consistency) | Same in 3.6.5; newly recorded access/conflict passage. |
 
 ### 4.3 CUDA C++ memory model
 
@@ -429,6 +471,19 @@ No binding of TD-SHC names a flush routine or a counted-signal routine.
   accesses, as instructed by order, for all threads within scope".
 - **E-CU4** (CU-AT). `cuda::atomic<T, Scope>` "has the same interface and
   semantics as `cuda::std::atomic`", with a thread scope.
+
+- **E-CU5** (CU-MM, [Atomicity](https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/memory_model.html#atomicity), accessed 2026-11-13).
+  "An atomic operation is atomic at the scope it specifies if" one of the
+  listed conditions holds. For system scope when "it affects an object in GPU memory"
+  and only GPU threads access it, the native-atomic P2P attribute
+  `cudaDevP2PAttrNativeAtomicSupported` queried "between each accessing srcDev and the GPU where the object resides, dstDev"
+  "is 1", "or only GPU threads from a single GPU concurrently access it."
+  This is a platform condition, not a
+  consequence of spelling the scope `sys`. The pinned TD-KCO docstring of
+  [`barrier_all_intra_node_atomic_cas_block`, lines 155–157](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L155-L157)
+  independently requires atomic support and excludes unsupported PCIe memory.
+  No hardware query was run. Whether D5/A1/A2 need a launch precondition or
+  registered assumption is open (section 10 item 6); neither is added here.
 
 ### 4.4 TileScale
 
@@ -496,6 +551,15 @@ No binding of TD-SHC names a flush routine or a counted-signal routine.
   the waits. The docstrings of `ld` and `st` explain the two arguments by the
   instruction level and define no string. The scope `cta` appears in no
   document; the source of `ld` and `st` accepts it.
+
+- **E-TS14** (TS-BUILTIN, docstrings at the pinned commit,
+  [lines 1194–1201](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/tilelang/language/builtin.py#L1194-L1201)).
+  `fence_gpu` documents device scope; `fence_sys` documents system scope and
+  cross-GPU visibility within a node. Neither states a memory order. The
+  [syntax census](../census/MinimalSyntax.md#tilescale-kernels) records
+  `fence_sys` in kernels 5 (specialized allgather reset, `71e7145`) and 21
+  (the version-2 DeepEP dispatch candidate, `c0f80cc5`); the latter is not the
+  project's version-1 DeepEP target. This is census evidence, not a run.
 
 ### 4.5 Base Triton
 
@@ -597,9 +661,9 @@ routine` column means that the CUDA back end has no definition.
 | `sync` | b | `nvshmem_sync` | E-NV14 | NV-COLL | documented | Defined by the CUDA back end only; not reachable as `libshmem_device.sync` |
 | `team_sync_block` | b | `nvshmemx_team_sync_block` | E-NV14, E-NV16 | NV-COLL, NV-OVER | documented | |
 | `team_sync_warp` | b | `nvshmemx_team_sync_warp` | E-NV14, E-NV16 | NV-COLL, NV-OVER | documented | |
-| `quiet` | b | `nvshmem_quiet` | E-NV2, E-NV3 | NV-ORD, TD-API | documented | Completes the caller's operations; notifies nobody. Not relied on: the flush routines (E-NV23, added in 3.7.0). Undated, not relied on: the GPU-thread note (E-NV22) |
+| `quiet` | b | `nvshmem_quiet` | E-NV2, E-NV3 | NV-ORD, TD-API | documented | Completes the caller's operations; grants no notification guarantee (E-NV2 and W6). Not relied on: the flush routines (E-NV23, added in 3.7.0). Absent from 3.6.5, not relied on: the GPU-thread note (E-NV22) |
 | `quiet_pe` | b | — | undocumented | TD-SH | out of scope | |
-| `fence` | a | `nvshmem_fence` | E-NV1, E-NV3 | NV-ORD, TD-API | documented | Orders delivery per target PE; non-blocking operations are not ordered (decision D1). Undated, not relied on: the GPU-thread note (E-NV22) |
+| `fence` | a | `nvshmem_fence` | E-NV1, E-NV3 | NV-ORD, TD-API | documented | Orders delivery per target PE; non-blocking operations are not ordered (decision D1). Absent from 3.6.5, not relied on: the GPU-thread note (E-NV22) |
 | `getmem_nbi_block` | c | `nvshmemx_getmem_nbi_block` | E-NV6, E-NV16 | NV-RMA, NV-OVER, TD-API | documented | Complete after `quiet` |
 | `getmem_block` | c | `nvshmemx_getmem_block` | E-NV6, E-NV16 | NV-RMA, NV-OVER, TD-API | documented | Complete at return |
 | `getmem_nbi_warp` | c | `nvshmemx_getmem_nbi_warp` | E-NV6, E-NV16 | NV-RMA, NV-OVER, TD-API | documented | Complete after `quiet` |
@@ -733,6 +797,8 @@ not apply to any row (E-TS1).
 
 | Primitive | Pattern | Evidence | Source | Treatment | Note |
 | --- | --- | --- | --- | --- | --- |
+| `fence_gpu` | a | E-TS14 (docstring at the pinned commit) | TS-BUILTIN | weakest (W6) | Device scope is stated; no memory order, hence no ordering/synchronization edge is granted |
+| `fence_sys` | a | E-TS14 (docstring at the pinned commit) | TS-BUILTIN | weakest (W6) | System scope is stated; no memory order, hence no ordering/synchronization edge is granted |
 | `get_rank` | none | E-TS2 | TS-API | documented | |
 | `get_num_ranks` | none | E-TS2 | TS-API | documented | |
 | `put_warp` | a | E-TS1, E-TS3 | TS-API, TS-COMM | weakest (W1) | The address remapping is documented; the access is not |
@@ -786,6 +852,18 @@ third is base Triton (tutorial 08).
 | `common_ops.wait_eq` | b | E-TD17 | TD-KCO, TD-T07 | weakest (W1) | Host side, as above. A poll by plain loads; its return creates no synchronization edge |
 | `tl.atomic_add` | a | E-TR1 (docstring at the pinned commit), E-TD18 | TR-CORE, TR-API, TD-T08 | named assumption (A1) | Atomicity and the return of the previous value are documented. Clause (d), for every string: Triton lists them and defines none, also not `release` and `gpu` of tutorial 08. Without `sem` the default is `acq_rel` |
 
+### 5.8 Common helpers used by K-M
+
+These names are used by the [MoE inventory](MoEInventory.md#per-function-census-observed-calls). Their source is TD-KCO at the existing pin; implementation text is not documentation of an additional guarantee.
+
+The callee docstrings are lower-ranked front-end evidence: [unsafe_barrier_on_this_grid L62–64](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L62-L64) says "triton implementation of cooperative_group::thid_grid().sync()" (the source spells `thid_grid`); [cooperative_barrier_on_this_grid L108–110](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L108-L110) says "triton implementation of cooperative_group::this_grid().sync()". Both add: "WARNING: use with care. better launch triton with launch_cooperative_grid=True to throw an explicit error instead of hang without notice." Neither states an ordering contract. Whether naming a grid sync documents a rendezvous is left open in section 10 item 7.
+
+| Primitive | Pattern | Stated guarantee / evidence | Source | Treatment | Note |
+| --- | --- | --- | --- | --- | --- |
+| `common_ops.barrier_all_intra_node_atomic_cas_block` | b | [Docstring L155–157](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L155-L157) requires atomic support and warns against PCIe memory lacking atomic reads/writes; no ordering/rendezvous contract is stated | TD-KCO | weakest (W4) | [Front-end helper L154–168](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L154-L168); each callee retains its existing row, including A1(b) for atomic_cas. The helper adds no guarantee; its hardware requirement is not a new assumption |
+| `common_ops.barrier_on_this_grid` | b | undocumented; [no docstring at L138–142](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L138-L142) | TD-KCO | weakest (W4) | Front-end wrapper; the cooperative/unsafe callees have the quoted docstrings above but no rows in this inventory. Until the open rendezvous question is decided, the wrapper is an event with no guarantee: no ordering or rendezvous is inferred. No callee row or assumption is added |
+| `common_ops.next_power_of_2` | none | undocumented; [no docstring at L270–272](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L270-L272) | TD-KCO | weakest (W3) | Compile-time value helper; no memory event and an unspecified result under W3. Its call to base Triton does not supply a documented contract in this inventory |
+
 ## 6. Inferences and decisions that apply to many rows
 
 **Rules for the weakest reasonable semantics.**
@@ -819,11 +897,11 @@ third is base Triton (tutorial 08).
   at least `waitValue`; the wait is guaranteed to return only if each signal
   holds exactly `waitValue` from some point until the wait reads it. The user
   adopted this reading on 2026-11-12 (D6).
-- I5. The NVSHMEM passages of section 4.2 other than E-NV22, E-NV23 and
-  E-NV24 are taken to hold in 3.6.5. The ground is indirect: the release notes
-  from 3.7.0 to 3.8.0 record no change to the routines that these passages
-  describe (E-NV25). The documentation text of 3.6.5 was not read (section 10,
-  item 3).
+- I5. Direct reading of the frozen manual replaces the prior indirect
+  release-note inference. Section 4.2's comparison establishes the 3.6.5
+  passages, including the different quiet visibility wording (E-NV2).
+  E-NV22/23/24 are absent and remain unusable. A later implementation fix
+  (E-NV25) is not proof that the earlier manual lacked E-NV11's contract.
 - I6. Under W2 the store of `common_ops.set_signal` is plain. The kernel of
   tutorial 07 reads the same words with `dl.wait` (E-TD17). By I1 that pair is
   a data race. Tutorial 07 as written is therefore not provable under this
@@ -863,9 +941,13 @@ third is base Triton (tutorial 08).
 
   | Item | Evidence | Dated by | Status | Rows that say so |
   | --- | --- | --- | --- | --- |
-  | Flush routines | E-NV23 | Release notes: added in 3.7.0 (E-NV25) | After 3.6.5: not relied on | `quiet`. No row binds a flush routine |
-  | Counted signals | E-NV24 | Release notes: added in 3.8.0 (E-NV25) | After 3.6.5: not relied on | `signal_op`, `signal_wait_until`. No row binds a counted-signal routine |
-  | GPU-thread notes on `fence` and `quiet` | E-NV22 | Not datable: the release notes do not record changes of the documentation text | Undated: not relied on | `fence`, `quiet` |
+  | Flush routines | E-NV23 | Release notes: added in 3.7.0 (E-NV25); absent from the 3.6.5 ordering page | After 3.6.5: not relied on | `quiet`. No row binds a flush routine |
+  | Counted signals | E-NV24 | Release notes: added in 3.8.0 (E-NV25); absent from the 3.6.5 signal page | After 3.6.5: not relied on | `signal_op`, `signal_wait_until`. No row binds a counted-signal routine |
+  | GPU-thread notes on `fence` and `quiet` | E-NV22 | Direct archive comparison: absent from the 3.6.5 ordering page | Not part of the version of record: not relied on | `fence`, `quiet` |
+
+  E-NV22 formerly supplied the cross-thread claim that one elected GPU thread’s
+  fence/quiet can order/complete earlier operations issued by other block threads
+  after synchronization; that claim is not used for 3.6.5.
 
   Consequence of the third line: a `fence` or a `quiet` is taken to cover the
   operations that the calling thread issued. That a `fence` after
@@ -894,7 +976,7 @@ remainder was chosen in this revision.
 | Status | Kept as a registered named assumption, in this narrower form, by the user's decision of 2026-11-12. Clause (d) was added by this revision for the row of section 5.7 and is not covered by that decision (section 10, item 1) |
 | Statement | Where no document defines a string or a return value, the reading of D5 is assumed: the string denotes the CUDA C++ thread scope or memory order of the same name, and the primitive performs, for each element, an atomic operation of the CUDA C++ memory model at that scope and order. (a) In kernel code of Triton-distributed the scope string `cta` denotes `cuda::thread_scope_block`, and the semantic strings `relaxed` and `acq_rel` denote the memory order of the same name. (b) `language_extra.atomic_add` is a fetch-add that returns the previous value, and `language_extra.atomic_cas` is a strong compare-exchange that returns the value read. (c) In kernel code of TileScale the scope strings `gpu` and `sys` denote `cuda::thread_scope_device` and `cuda::thread_scope_system`, and the semantic strings `relaxed`, `acquire`, `release` and `acq_rel` denote the memory order of the same name; `T.ld` is a load, `T.st` a store, `T.atom_add` a fetch-add, and a wait a sequence of loads that ends with a load satisfying its condition. (d) For base Triton `tl.atomic_add` in kernel code of Triton-distributed the scope strings `cta`, `gpu` and `sys` denote `cuda::thread_scope_block`, `cuda::thread_scope_device` and `cuda::thread_scope_system`, and the semantic strings `relaxed`, `acquire`, `release` and `acq_rel` denote the memory order of the same name. Nothing is assumed for any other string (`weak`, `volatile`, `sc`, the empty string), nor for `cta` in TileScale |
 | Source or rationale | (a) TD-SEM defines only `gpu`, `sys`, `acquire` and `release` (E-TD1, D5); TD-API takes a scope and a semantic without listing their values (E-TD8), and the CUDA definitions default to `relaxed` (E-TD16). (b) TD-API says "Atomic add operation" and "Atomic compare-and-swap" and describes no return value (E-TD8); the docstring says "the result of atomic_add" (E-TD14). (c) TS-API lists its strings and defines none; it does not list `cta` (E-TS13). The return value of `T.atom_add` is not assumed: its docstring states it (E-TS5). (d) The Triton documentation lists the strings with glosses and defines none; it does state atomicity and the return value, which are not assumed (E-TR1). For all clauses: the map names the CUDA C++ memory model as the source of semantics for scoped accesses (E-CU1, E-CU3, E-CU4) |
-| Affected kernels | Listed for tutorials 01 to 08 and the helper modules they import; other modules under `kernels/nvidia/` were not listed. Triton-distributed, clause (a): `kernels/nvidia/reduce_scatter.py` and `kernels/nvidia/allgather_gemm.py` (`st` without a semantic, hence `relaxed`). Clause (b): `kernels/nvidia/common_ops.py` (`atomic_cas`, `atomic_add`; tutorial 05 calls its `barrier_all_intra_node_atomic_cas_block`), `kernels/nvidia/reduce_scatter.py` and `kernels/nvidia/gemm_reduce_scatter.py` (`atomic_add`). Clause (d): tutorial 08 and `kernels/nvidia/gemm_reduce_scatter.py` (`tl.atomic_add` with `release` and `gpu`). Tutorials 05 to 08 import `common_ops.py`, `reduce_scatter.py` and `allgather_gemm.py`; `gemm_reduce_scatter.py` holds the same call as tutorial 08. No longer affected: `dl.wait(..., "gpu", "acquire")` of tutorials 01 and 07, and every `ld` or `st` with `gpu` or `sys` and `acquire` or `release` (D5). TileScale, clause (c): `examples/distributed/allgather_gemm/example_allgather_gemm_overlapped.py`, `example_allgather_gemm_specialized.py` and `gemm_allreduce/example_gemm_ar_specialized.py` (`T.wait_eq`, `T.wait_ge`); `gemm_reducescatter/example_gemm_rs_overlapped.py` (`T.st`, `T.atom_add`). The targets are the `_overlapped` variants (section 9, item 9) |
+| Affected kernels | Listed for tutorials 01 to 08, K-M, and the helper modules they import; the K-M extension below inventories use without changing any clause or primitive treatment. Triton-distributed, clause (a): `kernels/nvidia/reduce_scatter.py` and `kernels/nvidia/allgather_gemm.py` (`st` without a semantic, hence `relaxed`). Clause (b): `kernels/nvidia/common_ops.py` (`atomic_cas`, `atomic_add`; tutorial 05 calls its `barrier_all_intra_node_atomic_cas_block`), `kernels/nvidia/reduce_scatter.py` and `kernels/nvidia/gemm_reduce_scatter.py` (`atomic_add`). Clause (d): tutorial 08 and `kernels/nvidia/gemm_reduce_scatter.py` (`tl.atomic_add` with `release` and `gpu`). Tutorials 05 to 08 import `common_ops.py`, `reduce_scatter.py` and `allgather_gemm.py`; `gemm_reduce_scatter.py` holds the same call as tutorial 08. No longer affected: `dl.wait(..., "gpu", "acquire")` of tutorials 01 and 07, and every `ld` or `st` with `gpu` or `sys` and `acquire` or `release` (D5). TileScale, clause (c): `examples/distributed/allgather_gemm/example_allgather_gemm_overlapped.py`, `example_allgather_gemm_specialized.py` and `gemm_allreduce/example_gemm_ar_specialized.py` (`T.wait_eq`, `T.wait_ge`); `gemm_reducescatter/example_gemm_rs_overlapped.py` (`T.st`, `T.atom_add`). The targets are the `_overlapped` variants (section 9, item 9). K-M extension (all links at the TD pin): clause (a), [D2 default-semantic ld/st](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset.py#L69-L93) and [L192–197](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset.py#L192-L197), [D3 default-semantic ld/st](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L212-L251) and [L295–297](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L295-L297); clause (b), [D4 atomic_add release/gpu](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L243-L245), [L324](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L324-L326) and [release/sys L723](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L723), [D5 release/gpu and release/sys](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_ar.py#L398-L400) and [L479–481](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_ar.py#L479-L481), plus [common atomic_cas sys/release and sys/acquire](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L154-L168) reached by the K-M barrier callers. Clause (d), [D6 tl.atomic_add relaxed/gpu](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/allgather_group_gemm.py#L124-L125) and [L160–161](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/allgather_group_gemm.py#L160-L161), imported [threadblock_swizzle_ag_moe_kernel relaxed/gpu](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/threadblock_swizzle_ag_moe_triton.py#L183-L184) and [moe_utils relaxed/gpu](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_utils.py#L209) / [L297](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_utils.py#L297). The other scoped calls do not enlarge A1: [D3 gpu/acquire loads and gpu/release stores](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L264-L271) and [D4 release stores](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L243-L245) / [L324–326](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L324-L326), [D4 acquire waits](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L583) / [L667](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_rs.py#L667), [D5 release store and acquire load](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_ar.py#L617-L621) and [D5 acquire wait](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/moe_reduce_ar.py#L591) keep D5; [D2 membar(sys)](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset.py#L410) and [D3 membar(gl/sys)](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L179-L274) keep W2, including the undocumented gl spelling. The [D3 ld_acquire(..., "sys") calls](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L236) and [L291](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/all_to_all_vdev_2d_offset_inter_node.py#L291) retain W1: their scope argument grants no acquire guarantee. [D6 dl.wait(..., "gpu", "acquire")](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/allgather_group_gemm.py#L600) retains D5. The [common_ops atomic_add(scope="gpu", semantic="release")](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L76) and [L125](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L125) are reached via [barrier_on_this_grid](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L138-L142) and belong to clause (b); the wrapper adds no guarantee. No assumption is added for these calls. |
 
 ### A2 `notify_atomic_release`
 
@@ -915,12 +997,13 @@ remainder was chosen in this revision.
 | 5.2 `dl.tma.*` | 5 | 1 | 0 | 4 | 0 |
 | 5.3 `libshmem_device.*` | 86 | 49 | 0 | 12 | 25 |
 | 5.4 `language_extra` | 53 | 11 | 2 | 40 | 0 |
-| 5.5 TileScale, kernel side | 31 | 4 | 9 | 18 | 0 |
+| 5.5 TileScale, kernel side | 33 | 4 | 9 | 20 | 0 |
 | 5.6 TileScale, host side | 2 | 0 | 0 | 2 | 0 |
 | 5.7 Further names of the tutorials | 3 | 0 | 1 | 2 | 0 |
-| Total | 205 | 86 | 13 | 81 | 25 |
+| 5.8 Common helpers used by K-M | 3 | 0 | 0 | 3 | 0 |
+| Total | 210 | 86 | 13 | 86 | 25 |
 
-By pattern: a 50, b 45, c 60, none 50.
+By pattern: a 52, b 47, c 60, none 51.
 
 Of the 13 rows under a named assumption, 12 are under A1 and one (`dl.notify`)
 is under A2.
@@ -929,7 +1012,8 @@ Before the decisions of 2026-11-12 the table had 202 rows: 79 documented, 19
 under a named assumption, 79 weakest and 25 out of scope. Seven rows moved
 from A1 to `documented` (D5): `wait`, `ld_vector` and `st_vector` of 5.1, and
 `ld`, `st`, `ld_vector` and `st_vector` of 5.4. Three rows are new (5.7). No
-other row changed its treatment.
+other existing row changed its treatment. S6.8 adds two weakest fence rows
+to 5.5, with no assumption added or removed. K-M adds three weakest rows in 5.8 and extends only A1’s affected-kernel list; existing treatments and assumption statements are unchanged.
 
 ## 9. Decisions of 2026-11-12
 
@@ -948,7 +1032,8 @@ item names where this document applies the decision.
    5.7). The other names outside the modules of the ticket stay out until a
    kernel in scope uses them (section 2).
 5. **NVSHMEM version.** The version of record is 3.6.5, the one on the GPU
-   node; the documentation read reports 3.8.0. A proof may rely only on
+   node; the original reading used `latest` 3.8.0, and S6.8 directly
+   checks the frozen 3.6.5 archive. A proof may rely only on
    guarantees that already hold in 3.6.5 (section 1, D7).
 6. **`dl.wait`.** Its comparison is the intersection of both readings (I4,
    D6).
@@ -985,21 +1070,45 @@ them.
    named assumption is introduced here. In addition, the calls in tutorials 06
    and 07 do not match the definitions at the pin (E-TD17); this was read, not
    run.
-3. **What 3.6.5 guarantees.** The documentation text of 3.6.5 could not be
-   read, so every quoted NVSHMEM passage is from 3.8.0, and its validity for
-   3.6.5 rests on I5. The release notes of 3.8.0 record the fix "Fixed memory
-   visibility after device-side signal waits" (E-NV25). Whether 3.6.5 gives
-   what E-NV11 states for `signal_wait_until` is therefore not established.
-4. **Global visibility.** The release notes of 3.6.5 say that barrier, quiet
-   and wait "do not ensure global ordering and visibility" (E-NV26), without
-   the exception for NVLink-only systems that D2 takes from E-NV15. Should D2
-   be weakened to the release notes? Whether the two-GPU node is NVLink-only
-   is also still unchecked.
+3. **Contract versus implementation.** The frozen manual now directly
+   establishes E-NV11's signal-wait contract. The 3.8.0 release notes report a
+   later implementation visibility fix (E-NV25). The applicability of that bug
+   to the project's installed 3.6.5/runtime remains unchecked; this does not
+   erase the earlier documented guarantee or establish a passing GPU run.
+4. **Global visibility: conflict within 3.6.5.** The two readings are (a)
+   retain D2's NVLink-only exception from the manual, or (b) weaken visibility
+   to source/destination only following the release limitation. The following
+   are quotations of 3.6.5 passages, not a decision:
+
+   | Passage | What the 3.6.5 source says |
+   | --- | --- |
+   | [Ordering, quiet](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) (E-NV2) | "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE." |
+   | [Collectives, barrier](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-barrier) (E-NV13) | "nvshmem_barrier ensures that all previously issued stores and remote memory updates, including AMOs and RMA operations, done by any of the PEs in the active set are complete before returning. On systems with only NVLink, updates are globally visible, whereas on systems with both NVLink and InfiniBand, NVSHMEM only guarantees that updates to the memory of a given PE are visible to that PE." |
+   | [Memory Model, Visibility Guarantees](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#visibility-guarantees) (E-NV15) | "On systems with both NVLink and InfiniBand, the NVSHMEM synchronization operations including nvshmem_barrier, nvshmem_barrier_all, nvshmem_quiet, nvshmem_wait_until_*, and nvshmem_test_* only guarantee visibility of updates to the local PE’s symmetric objects. However, on systems with only NVLink, these operations guarantee global visibility of updates to symmetric objects." |
+   | [Using NVSHMEM, Data Consistency](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html#data-consistency) (E-NV27) | "When updates performed by a PE must be ordered or made visible to PEs other than the target PE, use the nvshmem_quiet operation." |
+   | [3.6.5 release Limitations](https://github.com/NVIDIA/nvshmem/releases/tag/v3.6.5-0) (E-NV26) | "`nvshmem_barrier*`, `nvshmem_quiet`, and `nvshmem_wait_until` only ensure ordering and visibility between the source and destination PEs. They *do not* ensure global ordering and visibility." |
+   | [Ordering, fence Notes](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-fence) (E-NV1; unchanged in latest) | "nvshmem_quiet guarantees completion of all operations on symmetric data objects which makes the updates visible to all other PEs." |
+
+   The user still chooses whether to weaken D2. The project's topology was
+   not checked, and the stronger reading is not silently made universal.
 5. **Triton version in the `triton-dist` environment.** Triton-distributed
    bundles Triton at commit `f797708`, not `v3.5.1`. The passage cited for
    `tl.atomic_add` is the same at both (E-TR1). If further base Triton rows
    are added, the commit to cite has to be chosen.
 
+6. **Cross-GPU atomic support.** E-CU5 requires a native-atomic P2P property
+   for GPU-memory system-scope atomics. D5, A1 and A2 do not currently state
+   that condition. The user must decide whether to record it as a launch
+   precondition or an assumption. No assumption or launch contract is changed.
+
+7. **Grid-barrier callee docstrings.** Do the two pinned `common_ops.py`
+   docstrings quoted in section 5.8, which name a grid `sync()` and warn about
+   launch configuration, count as a documented rendezvous? They state no
+   memory-ordering contract. The wrapper currently has no guarantee and the
+   callees have no rows. This is an open semantic question, not a decision to
+   strengthen the wrapper or introduce an assumption.
+
+
 Not checked in this revision: the call graph from each kernel to the helpers
-it reaches; a second reading of the quoted passages of the first draft; the
-NVSHMEM versions on the GPU node.
+it reaches; runtime applicability of the later signal-wait fix; the
+NVSHMEM versions and P2P capabilities on the GPU node.
