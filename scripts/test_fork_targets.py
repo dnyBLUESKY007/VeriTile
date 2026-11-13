@@ -28,7 +28,8 @@ class ForkTargetGates(unittest.TestCase):
         return path
 
     def test_sorry_fails_a_main_target_and_not_staging(self):
-        self.probe('VeriTile/Dist/GateProbe.lean', SORRY)
+        # The DSL reserves bare `true`; the generated audit must still elaborate.
+        self.probe('VeriTile/Dist/GateProbe.lean', 'import VeriTile.Triton.DSL.Syntax\n' + SORRY)
         rejected = run('check_fork_target.py', 'VeriTileDist')
         self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
         self.assertIn('SORRY\tVeriTile.Dist.GateProbe\tveritileGateProbe', rejected.stderr)
