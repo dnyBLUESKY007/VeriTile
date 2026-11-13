@@ -479,6 +479,7 @@ globs = [
   "tests.lean.WelfordCallMetadata",
   "tests.lean.WelfordSourceContexts",
   "tests.lean.InterpReflectSmoke",
+  "tests.lean.dist.TritonExtParsing",
 ]
 
 # Fork targets for the async and distributed line. Each main target has its own
