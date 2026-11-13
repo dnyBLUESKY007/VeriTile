@@ -1,10 +1,12 @@
 /-
 VeriTile.Staging.Dist.EventSpec
 
-Draft of the event interface of the Dist line for the freeze ticket S2.1
-(#37). Everything here is UNSIGNED: no declaration has a row in
-`documents/dist/FrozenStatements.tsv`. The user signs after deciding the
-choices listed below.
+Event interface of the Dist line, frozen by ticket S2.1 (#37). Signed on
+2026-11-13: the eleven theorems of this file, each with the definitions under
+it (`documents/dist/FrozenStatements.tsv`, `FrozenDefinitions.tsv`). The user
+approved the draft of #403 as drafted; the agent recorded the signature on the
+user's delegation. `Event.AccessibleBy` is under no signed statement, so no
+fingerprint records it: it stays UNSIGNED.
 
 An event is what one agent does at one synchronization point. The file gives
 the `Event` type, the interface of the three patterns and the statements of
@@ -22,51 +24,95 @@ deletes it here in the same change. `PrimitiveSources.md` below is
 `documents/dist/PrimitiveSources.md` (S2.2); `D5`, `W1`, `A2`, `E-NV12` and the
 like are its decisions, rules, assumptions and evidence items.
 
-Open choices. Each definition marked PROVISIONAL takes the first option of the
-choice it names, so that the statements elaborate. A different decision
-changes that definition before anything is signed.
+Decisions. Each is option A of the choice with the same number in #403, where
+the other options and their costs are. A docstring that says `Decision n`
+belongs to a definition that carries decision `n`.
 
- 1. Relation to upstream `VeriTile.Triton.Concurrent.Event`: here a separate
-    type over `Addr`, `Agent` and `Scope`; nothing upstream is imported. The
-    embedding of upstream events is left to the bridge of S4.4.
- 2. Scope and order on an access: here one `Mode` per access with three
-    cases: `plain` (no atomicity, no scope), `atomic scope order` (CUDA C++
-    model) and `shmem order` (NVSHMEM signalling and ordering routines).
- 3. One atomic family or two: here two. Accesses of different families to one
-    cell conflict (E-NV12), and only an edge of the NVSHMEM family is subject
-    to choice 4.
- 4. D2, how far NVSHMEM visibility reaches: here a parameter `ShmemReach` of
-    `SyncEdge`, not a fixed reading.
- 5. Monotonicity of a counter: here an obligation on the trace
-    (`Counter.SetsMonotone`), a hypothesis of `Counter.mono`; not a property
-    of the type.
- 6. Identity of a counter: here a type `Counter` with four kinds: a memory
-    word, a barrier object of a CTA, a rendezvous of several ranks, and the
-    delivered transfers of an agent.
- 7. Binding of a completion to its counter: here the transfer names the
-    counter write that its completion performs (`Transfer.completion`), and
-    the completion event performs the copy and that write in one step.
-    A transfer without one never completes (W5).
- 8. Ranks: here `Rank` (a natural number), through `Addr`, `Agent` and `Cta`;
-    no `Fin numRanks` and no rank-count parameter on `Event`.
- 9. What an event carries: here evaluated addresses and the values written
-    to counters; not source expressions, and not the value that a load, an
-    update or a wait reads.
-10. Where races are stated: here only `Conflict` and the conditions without
-    which no synchronization edge exists (`SyncEdge`). Happens-before, the
-    data race and the trace conditions of an edge (which write a read reads,
-    fences) belong to S4.1 (#47). The lemma of S2.5 "a read without a
-    completion edge races with the transfer" is therefore stated here in two
-    parts that do not need happens-before (`inFlight_of_initiate`,
-    `conflict_complete`) and one that bounds the edges
-    (`SyncEdge.of_complete`).
+ 1. User decision, 2026-11-13: `Event` is a separate type beside upstream `Concurrent.Event`.
+ 2. User decision, 2026-11-13: one `Mode` per access: `plain`, `atomic scope order`, `shmem order`.
+ 3. User decision, 2026-11-13: two atomic families, CUDA atomics and NVSHMEM routines.
+ 4. User decision, 2026-11-13: NVSHMEM reach is a parameter of the edge relation (`ShmemReach`).
+ 5. User decision, 2026-11-13: counter monotonicity is a trace predicate and a hypothesis.
+ 6. User decision, 2026-11-13: a `Counter` has four kinds.
+ 7. User decision, 2026-11-13: a transfer names the counter write its completion performs.
+ 8. User decision, 2026-11-13: ranks are `Rank`.
+ 9. User decision, 2026-11-13: an event carries evaluated addresses and values written to counters.
+10. User decision, 2026-11-13: race statements in happens-before form belong to S4.1 (#47).
 
-Smaller provisional points: a trace entry is a pair of an agent and an event;
-the completion of a transfer is paired with the agent that initiated it and is
-not in the program order of that agent; a transfer is identified by its
-fields, not by a number; counter values are natural numbers, so the
-wrap-around of a 64-bit word is not modelled; a `dl.wait` under D6 is proved
-for both comparisons `eq` and `ge`.
+What the definitions make of them:
+
+- 1: `Event` is over `Addr`, `Agent` and `Scope`, and uses no declaration of
+  upstream `VeriTile/Triton/Concurrent/`. The embedding of upstream events is
+  left to the bridge of S4.4.
+- 2: `plain` has no atomicity and no scope; `atomic` is the CUDA C++ model;
+  `shmem` is an NVSHMEM signalling or ordering routine.
+- 3: accesses of different families to one cell conflict when one of them
+  writes (E-NV12), and only an edge of the NVSHMEM family is subject to
+  decision 4.
+- 4: `ShmemReach` is `global` or `ownRank`, a parameter of `SyncEdge`. The
+  NVSHMEM 3.6.5 manual states both readings in different places (#438), so
+  neither is fixed; each kernel theorem states which one it needs.
+- 5: the predicate is `Counter.SetsMonotone`, a hypothesis of `Counter.mono`;
+  monotonicity is not a property of the type.
+- 6: a memory word, a barrier object of a CTA, a rendezvous of several ranks,
+  and the delivered transfers of an agent.
+- 7: the counter write is `Transfer.completion`, and the completion event
+  performs the copy and that write in one step. A transfer without one never
+  completes (W5).
+- 8: `Rank` is a natural number, through `Addr`, `Agent` and `Cta`; there is
+  no `Fin numRanks` and no rank-count parameter on `Event`.
+- 9: an event carries no source expression, and not the value that a load, an
+  update or a wait reads.
+- 10: this file states only `Conflict` and the conditions without which no
+  synchronization edge exists (`SyncEdge`). Happens-before, the data race and
+  the trace conditions of an edge (which write a read reads, fences) belong
+  to S4.1. The lemma of S2.5 "a read without a completion edge races with the
+  transfer" is therefore stated here in two parts that do not need
+  happens-before (`inFlight_of_initiate`, `conflict_complete`) and one that
+  bounds the edges (`SyncEdge.of_complete`).
+
+Also part of the signed interface (the smaller points of the draft, approved
+with it on 2026-11-13), each with what it leaves out:
+
+- A trace entry is a pair of an agent and an event (`Trace`). Left out: an
+  identity of the entry; two equal entries differ only by their position.
+- The completion of a transfer is listed under the agent that initiated it
+  and is outside the program order of that agent. Left out: who performs the
+  delivery, and any definition here that enforces either half; the scopes of
+  the completion's counter write are judged for the initiating agent.
+- A transfer is identified by its fields, not by a number. Left out: which
+  initiation a completion answers; `Transfer.pending` only counts both.
+- Counter values are natural numbers. Left out: the wrap-around of a 64-bit
+  word, and an `add` that decreases.
+- A `dl.wait` under D6 is proved for both comparisons `eq` and `ge`. Left out:
+  a wait event whose comparison is unknown; the stability lemma here
+  (`Counter.ge_stable`) is for `ge` only.
+- The names `Mode`, `Bump` and `Trace`. Left out: nothing of the meaning;
+  upstream has a `Trace` and an `Event` of its own in other namespaces, and a
+  fingerprint is computed from names, so a rename needs a new signature.
+
+Registered elsewhere, not part of this interface. The user decided on
+2026-11-13 to register these readings as named assumptions (comment on #37);
+they go to the assumption registry and to `PrimitiveSources.md`, and no
+definition here depends on them:
+
+- a spin loop with an empty body is one blocking event;
+- `T.sync_threads(id, count)` is a barrier of `count` threads;
+- a block barrier orders every thread's accesses before it ahead of every
+  thread's accesses after it;
+- the waits of the DeepEP port take the scope and order that the newer
+  documentation gives as defaults;
+- `volatile` loads, of the DeepEP port only, are relaxed atomic loads at the
+  given scope;
+- a system-scope atomic on another GPU's memory is atomic where the P2P
+  native-atomic attribute is 1.
+
+Still open (comment of 2026-11-13 on #37):
+
+- `dl.wait` on a word that an NVSHMEM signal writes (tutorial 07): under
+  decision 3 the two conflict (`conflict_of_atomic_of_shmem`) unless an
+  assumption is added.
+- Whether the docstring of the grid barrier counts as a documented rendezvous.
 
 What each pattern has to carry (read from `documents/census/MinimalSyntax.md`,
 kernels 106–119, from `PrimitiveSources.md` and from
@@ -115,7 +161,7 @@ namespace VeriTile.Dist
 
 /-! ## Scope and order of an access (pattern a) -/
 
-/-- UNSIGNED. Owner: S2.3 (#39). The memory order of an atomic operation, as
+/-- Owner: S2.3 (#39). The memory order of an atomic operation, as
 in the CUDA C++ memory model. -/
 inductive MemOrder where
   | relaxed
@@ -124,17 +170,17 @@ inductive MemOrder where
   | acqRel
   deriving DecidableEq, Repr
 
-/-- UNSIGNED. Owner: S2.3 (#39). The order has a release side. -/
+/-- Owner: S2.3 (#39). The order has a release side. -/
 def MemOrder.releases : MemOrder → Bool
   | .release | .acqRel => true
   | .relaxed | .acquire => false
 
-/-- UNSIGNED. Owner: S2.3 (#39). The order has an acquire side. -/
+/-- Owner: S2.3 (#39). The order has an acquire side. -/
 def MemOrder.acquires : MemOrder → Bool
   | .acquire | .acqRel => true
   | .relaxed | .release => false
 
-/-- UNSIGNED, PROVISIONAL (choices 2 and 3). Owner: S2.3 (#39). How an access
+/-- Decisions 2 and 3. Owner: S2.3 (#39). How an access
 synchronizes. `plain` is the weakest reading (W1, W2): an ordinary, unordered,
 non-atomic access. `atomic scope order` is an atomic operation of the CUDA C++
 memory model (D5; A1 and A2 where the documentation is silent). `shmem order`
@@ -146,7 +192,7 @@ inductive Mode where
   | shmem (order : MemOrder)
   deriving DecidableEq, Repr
 
-/-- UNSIGNED. Owner: S2.3 (#39). What an access does to its cell. `update` is
+/-- Owner: S2.3 (#39). What an access does to its cell. `update` is
 a read-modify-write. -/
 inductive AccessKind where
   | load
@@ -154,37 +200,37 @@ inductive AccessKind where
   | update
   deriving DecidableEq, Repr
 
-/-- UNSIGNED. Owner: S2.3 (#39). The access reads its cell. -/
+/-- Owner: S2.3 (#39). The access reads its cell. -/
 def AccessKind.reads : AccessKind → Bool
   | .load | .update => true
   | .store => false
 
-/-- UNSIGNED. Owner: S2.3 (#39). The access writes its cell. -/
+/-- Owner: S2.3 (#39). The access writes its cell. -/
 def AccessKind.writes : AccessKind → Bool
   | .store | .update => true
   | .load => false
 
 /-! ## Counters (pattern b) -/
 
-/-- UNSIGNED. Owner: S2.4 (#40). How a counter is written: `set` replaces its
+/-- Owner: S2.4 (#40). How a counter is written: `set` replaces its
 value, `add` adds to it. -/
 inductive SignalOp where
   | set
   | add
   deriving DecidableEq, Repr
 
-/-- UNSIGNED. Owner: S2.4 (#40). The new value of a counter that holds `old`
+/-- Owner: S2.4 (#40). The new value of a counter that holds `old`
 and is written with `v`. -/
 def SignalOp.apply : SignalOp → Nat → Nat → Nat
   | .set, _, v => v
   | .add, old, v => old + v
 
-/-- UNSIGNED. Owner: S2.4 (#40). The memory access that a counter write is. -/
+/-- Owner: S2.4 (#40). The memory access that a counter write is. -/
 def SignalOp.kind : SignalOp → AccessKind
   | .set => .store
   | .add => .update
 
-/-- UNSIGNED. Owner: S2.4 (#40). The comparison of a wait. -/
+/-- Owner: S2.4 (#40). The comparison of a wait. -/
 inductive Cmp where
   | eq
   | ne
@@ -194,7 +240,7 @@ inductive Cmp where
   | lt
   deriving DecidableEq, Repr
 
-/-- UNSIGNED. Owner: S2.4 (#40). `cmp.holds v n`: a counter with value `v`
+/-- Owner: S2.4 (#40). `cmp.holds v n`: a counter with value `v`
 satisfies the wait condition `cmp n`. -/
 def Cmp.holds : Cmp → Nat → Nat → Prop
   | .eq, v, n => v = n
@@ -204,7 +250,7 @@ def Cmp.holds : Cmp → Nat → Nat → Prop
   | .gt, v, n => n < v
   | .lt, v, n => v < n
 
-/-- UNSIGNED, PROVISIONAL (choice 6). Owner: S2.4 (#40). An object that is
+/-- Decision 6. Owner: S2.4 (#40). An object that is
 written and waited on. `word p` is the memory word at `p`: a signal, a flag, a
 head or a tail; every memory word can serve. `phase c id` is barrier object
 `id` of CTA `c` (`__syncthreads`, a named barrier). `rendezvous id` is a
@@ -217,7 +263,7 @@ inductive Counter where
   | delivered (a : Agent)
   deriving DecidableEq
 
-/-- UNSIGNED. Owner: S2.4 (#40). One write to a counter: which counter, how,
+/-- Owner: S2.4 (#40). One write to a counter: which counter, how,
 with which value, and how the write synchronizes. -/
 structure Bump where
   counter : Counter
@@ -228,7 +274,7 @@ structure Bump where
 
 /-! ## Transfers (pattern c) and the event type -/
 
-/-- UNSIGNED, PROVISIONAL (choice 7). Owner: S2.5 (#41). An asynchronous copy
+/-- Decision 7. Owner: S2.5 (#41). An asynchronous copy
 of the cells `src` to the cells `dst`. With `nbi = false` the source is read
 when the transfer is initiated (a blocking put, E-NV4); with `nbi = true` it
 is read when the transfer completes (E-NV5). `completion` is the counter write
@@ -240,7 +286,7 @@ structure Transfer where
   completion : Option Bump
   deriving DecidableEq
 
-/-- UNSIGNED, PROVISIONAL (choices 1, 8 and 9). Owner: S2.3 (#39). What one
+/-- Decisions 1, 8 and 9. Owner: S2.3 (#39). What one
 agent does at one synchronization point.
 
 - `access kind p mode`: a load, store or update of the cell `p`.
@@ -259,19 +305,19 @@ inductive Event where
   | complete (t : Transfer)
   deriving DecidableEq
 
-/-- UNSIGNED, PROVISIONAL. Owner: S2.3 (#39). The events of a run in the order
+/-- Owner: S2.3 (#39). The events of a run in the order
 in which they happen, each with the agent that performs it. The completion of
 a transfer is listed under the agent that initiated the transfer. -/
 abbrev Trace := List (Agent × Event)
 
-/-- UNSIGNED. Owner: S2.4 (#40). The memory access that a counter write is;
+/-- Owner: S2.4 (#40). The memory access that a counter write is;
 none for a counter that is not a memory word. -/
 def Bump.accesses (b : Bump) : List (AccessKind × Addr × Mode) :=
   match b.counter with
   | .word p => [(b.op.kind, p, b.mode)]
   | _ => []
 
-/-- UNSIGNED. Owner: S2.3 (#39). The memory accesses of an event: kind, cell
+/-- Owner: S2.3 (#39). The memory accesses of an event: kind, cell
 and mode. A completion stores to every destination cell as a plain access. -/
 def Event.accesses : Event → List (AccessKind × Addr × Mode)
   | .access kind p mode => [(kind, p, mode)]
@@ -285,13 +331,14 @@ def Event.accesses : Event → List (AccessKind × Addr × Mode)
         (if t.nbi then t.src.map fun p => (.load, p, .plain) else []) ++
         (t.completion.map Bump.accesses).getD []
 
-/-- UNSIGNED. Owner: S2.3 (#39). Agent `a` may perform every memory access of
-the event (`AccessibleAt` of the location model). -/
+/-- UNSIGNED (no signed statement depends on it). Owner: S2.3 (#39). Agent `a`
+may perform every memory access of the event (`AccessibleAt` of the location
+model). -/
 def Event.AccessibleBy (symm : VeriTile.Triton.RegionName → Bool) (a : Agent) (e : Event) :
     Prop :=
   ∀ kind p mode, (kind, p, mode) ∈ e.accesses → AccessibleAt symm a p
 
-/-- UNSIGNED. Owner: S2.3 (#39). The side of an event that can start a
+/-- Owner: S2.3 (#39). The side of an event that can start a
 synchronization edge: the object it writes and the mode of that write. -/
 def Event.releaseOf? : Event → Option (Counter × Mode)
   | .access kind p mode => if kind.writes then some (.word p, mode) else none
@@ -299,7 +346,7 @@ def Event.releaseOf? : Event → Option (Counter × Mode)
   | .complete t => t.completion.map fun b => (b.counter, b.mode)
   | _ => none
 
-/-- UNSIGNED. Owner: S2.3 (#39). The side of an event that can end a
+/-- Owner: S2.3 (#39). The side of an event that can end a
 synchronization edge: the object it reads and the mode of that read. -/
 def Event.acquireOf? : Event → Option (Counter × Mode)
   | .access kind p mode => if kind.reads then some (.word p, mode) else none
@@ -309,7 +356,7 @@ def Event.acquireOf? : Event → Option (Counter × Mode)
 
 /-! ## Pattern (a): conflicts and synchronization edges (S2.3) -/
 
-/-- UNSIGNED, PROVISIONAL (choice 3). Owner: S2.3 (#39). Two accesses by the
+/-- Decision 3. Owner: S2.3 (#39). Two accesses by the
 agents `a` and `b` are atomic with respect to each other: both are CUDA
 atomics whose scopes each contain both agents (E-CU2), or both are NVSHMEM
 routines (E-NV12). -/
@@ -318,7 +365,7 @@ def Mode.AtomicFor (a b : Agent) : Mode → Mode → Prop
   | .shmem _, .shmem _ => True
   | _, _ => False
 
-/-- UNSIGNED. Owner: S2.3 (#39). Two events conflict: they access one cell, at
+/-- Owner: S2.3 (#39). Two events conflict: they access one cell, at
 least one of them writes it, and the two accesses are not atomic with respect
 to each other. A conflict is a data race when happens-before does not order
 the two events (S4.1). -/
@@ -327,7 +374,7 @@ def Conflict (x y : Agent × Event) : Prop :=
     (kind, p, mode) ∈ x.2.accesses ∧ (kind', p, mode') ∈ y.2.accesses ∧
       (kind.writes = true ∨ kind'.writes = true) ∧ ¬ Mode.AtomicFor x.1 y.1 mode mode'
 
-/-- UNSIGNED, PROVISIONAL (choice 4). Owner: S2.3 (#39). Which cells an edge
+/-- Decision 4. Owner: S2.3 (#39). Which cells an edge
 of the NVSHMEM family makes visible to the acquiring agent: every cell
 (`global`, the reading D2 takes for a system with NVLink alone), or only the
 device memory of the acquiring agent's rank (`ownRank`, E-NV15 and E-NV26). -/
@@ -336,7 +383,7 @@ inductive ShmemReach where
   | ownRank
   deriving DecidableEq, Repr
 
-/-- UNSIGNED, PROVISIONAL (choices 3 and 4). Owner: S2.3 (#39). A release
+/-- Decisions 3 and 4. Owner: S2.3 (#39). A release
 side in mode `m` by agent `a` and an acquire side in mode `m'` by agent `b`
 can form an edge that orders accesses to the cell `p`. -/
 def Mode.Pairs (reach : ShmemReach) (p : Addr) (a b : Agent) : Mode → Mode → Prop
@@ -347,7 +394,7 @@ def Mode.Pairs (reach : ShmemReach) (p : Addr) (a b : Agent) : Mode → Mode →
         (reach = .global ∨ p.space = .global b.rankOf)
   | _, _ => False
 
-/-- UNSIGNED, PROVISIONAL (choices 4 and 10). Owner: S2.3 (#39). The
+/-- Decisions 4 and 10. Owner: S2.3 (#39). The
 conditions without which the event `x` has no synchronization edge to the
 event `y`, as far as the cell `p` is concerned: `x` writes and `y` reads the
 same object, and their modes pair. The conditions on the trace (that `y` reads
@@ -357,7 +404,7 @@ def SyncEdge (reach : ShmemReach) (p : Addr) (x y : Agent × Event) : Prop :=
   ∃ c m m', x.2.releaseOf? = some (c, m) ∧ y.2.acquireOf? = some (c, m') ∧
     Mode.Pairs reach p x.1 y.1 m m'
 
-/-- UNSIGNED. Proved by S2.3 (#39). An edge between two CUDA atomics exists
+/-- Signed. Proved by S2.3 (#39). An edge between two CUDA atomics exists
 only when the scope of each side contains both agents. -/
 theorem SyncEdge.covers {reach : ShmemReach} {p : Addr} {x y : Agent × Event}
     {c c' : Counter} {s s' : Scope} {o o' : MemOrder} (h : SyncEdge reach p x y)
@@ -365,34 +412,34 @@ theorem SyncEdge.covers {reach : ShmemReach} {p : Addr} {x y : Agent × Event}
     (hy : y.2.acquireOf? = some (c', .atomic s' o')) :
     s.covers x.1 y.1 ∧ s'.covers x.1 y.1 := sorry
 
-/-- UNSIGNED. Proved by S2.3 (#39). An acquire at `gpu` scope has no edge from
+/-- Signed. Proved by S2.3 (#39). An acquire at `gpu` scope has no edge from
 a writer on another rank. -/
 theorem not_syncEdge_of_acquire_gpu {reach : ShmemReach} {p : Addr} {x y : Agent × Event}
     {c : Counter} {o : MemOrder} (hy : y.2.acquireOf? = some (c, .atomic .gpu o))
     (hr : x.1.rankOf ≠ y.1.rankOf) : ¬ SyncEdge reach p x y := sorry
 
-/-- UNSIGNED. Proved by S2.3 (#39). A plain write starts no edge and a plain
+/-- Signed. Proved by S2.3 (#39). A plain write starts no edge and a plain
 read ends none (W1, W2). -/
 theorem not_syncEdge_of_plain {reach : ShmemReach} {p : Addr} {x y : Agent × Event}
     {c : Counter}
     (h : x.2.releaseOf? = some (c, .plain) ∨ y.2.acquireOf? = some (c, .plain)) :
     ¬ SyncEdge reach p x y := sorry
 
-/-- UNSIGNED. Proved by S2.3 (#39). Under the reach `ownRank`, an edge that
+/-- Signed. Proved by S2.3 (#39). Under the reach `ownRank`, an edge that
 ends in an NVSHMEM routine orders only accesses to the device memory of the
 acquiring agent's rank. -/
 theorem SyncEdge.shmem_ownRank {p : Addr} {x y : Agent × Event} {c : Counter} {o : MemOrder}
     (h : SyncEdge .ownRank p x y) (hy : y.2.acquireOf? = some (c, .shmem o)) :
     p.space = .global y.1.rankOf := sorry
 
-/-- UNSIGNED. Proved by S2.3 (#39). A plain access conflicts with every access
+/-- Signed. Proved by S2.3 (#39). A plain access conflicts with every access
 to the same cell when one of the two writes (inference I1). -/
 theorem conflict_of_plain {x y : Agent × Event} {kind kind' : AccessKind} {p : Addr}
     {mode : Mode} (hx : (kind, p, .plain) ∈ x.2.accesses)
     (hy : (kind', p, mode) ∈ y.2.accesses) (hw : kind.writes = true ∨ kind'.writes = true) :
     Conflict x y := sorry
 
-/-- UNSIGNED. Proved by S2.3 (#39). A CUDA atomic and an NVSHMEM routine on
+/-- Signed. Proved by S2.3 (#39). A CUDA atomic and an NVSHMEM routine on
 the same cell conflict when one of the two writes (E-NV12). -/
 theorem conflict_of_atomic_of_shmem {x y : Agent × Event} {kind kind' : AccessKind}
     {p : Addr} {s : Scope} {o o' : MemOrder} (hx : (kind, p, .atomic s o) ∈ x.2.accesses)
@@ -401,14 +448,14 @@ theorem conflict_of_atomic_of_shmem {x y : Agent × Event} {kind kind' : AccessK
 
 /-! ## Pattern (b): monotone counter plus wait (S2.4) -/
 
-/-- UNSIGNED. Owner: S2.4 (#40). The counter write that an event performs: its
+/-- Owner: S2.4 (#40). The counter write that an event performs: its
 own for `bump`, the bound one for a completion. -/
 def Event.bump? : Event → Option Bump
   | .bump b => some b
   | .complete t => t.completion
   | _ => none
 
-/-- UNSIGNED. Owner: S2.4 (#40). The value of counter `c` after the trace
+/-- Owner: S2.4 (#40). The value of counter `c` after the trace
 `tr`, starting from `init c`. -/
 def Counter.value (init : Counter → Nat) (tr : Trace) (c : Counter) : Nat :=
   tr.foldl
@@ -418,7 +465,7 @@ def Counter.value (init : Counter → Nat) (tr : Trace) (c : Counter) : Nat :=
       | none => v)
     (init c)
 
-/-- UNSIGNED, PROVISIONAL (choice 5). Owner: S2.4 (#40). The obligation under
+/-- Decision 5. Owner: S2.4 (#40). The obligation under
 which a counter with `set` writes is monotone: every `set` of `c` in `tr`
 writes a value that is at least the value `c` has just before it. -/
 def Counter.SetsMonotone (init : Counter → Nat) (tr : Trace) (c : Counter) : Prop :=
@@ -426,13 +473,13 @@ def Counter.SetsMonotone (init : Counter → Nat) (tr : Trace) (c : Counter) : P
     tr = pre ++ x :: post → x.2.bump? = some b → b.counter = c → b.op = .set →
       Counter.value init pre c ≤ b.amount
 
-/-- UNSIGNED. Proved by S2.4 (#40). Under the obligation, the value of a
+/-- Signed. Proved by S2.4 (#40). Under the obligation, the value of a
 counter never decreases along a trace. -/
 theorem Counter.mono {init : Counter → Nat} {tr pre : Trace} {c : Counter}
     (h : Counter.SetsMonotone init tr c) (hpre : pre <+: tr) :
     Counter.value init pre c ≤ Counter.value init tr c := sorry
 
-/-- UNSIGNED. Proved by S2.4 (#40). Under the obligation, a wait for `c ≥ n`
+/-- Signed. Proved by S2.4 (#40). Under the obligation, a wait for `c ≥ n`
 whose condition holds keeps holding. -/
 theorem Counter.ge_stable {init : Counter → Nat} {tr pre : Trace} {c : Counter} {n : Nat}
     (h : Counter.SetsMonotone init tr c) (hpre : pre <+: tr)
@@ -441,31 +488,31 @@ theorem Counter.ge_stable {init : Counter → Nat} {tr pre : Trace} {c : Counter
 
 /-! ## Pattern (c): asynchronous transfer (S2.5) -/
 
-/-- UNSIGNED, PROVISIONAL. Owner: S2.5 (#41). How often the transfer `t` has
+/-- Owner: S2.5 (#41). How often the transfer `t` has
 been initiated in `tr` and has not completed yet. -/
 def Transfer.pending (t : Transfer) (tr : Trace) : Nat :=
   tr.countP (fun x => x.2 = .initiate t) - tr.countP (fun x => x.2 = .complete t)
 
-/-- UNSIGNED. Owner: S2.5 (#41). After `tr` the cell `p` is the destination of
+/-- Owner: S2.5 (#41). After `tr` the cell `p` is the destination of
 a transfer that has not completed: it holds unspecified data, and the
 execution semantics rejects an access to it. -/
 def InFlight (tr : Trace) (p : Addr) : Prop :=
   ∃ t : Transfer, 0 < t.pending tr ∧ p ∈ t.dst
 
-/-- UNSIGNED. Proved by S2.5 (#41). The destination of a transfer that was
+/-- Signed. Proved by S2.5 (#41). The destination of a transfer that was
 initiated and has not completed is in flight. This covers a transfer that
 never completes (W5) and a non-blocking put without `quiet`. -/
 theorem inFlight_of_initiate {tr : Trace} {a : Agent} {t : Transfer} {p : Addr}
     (hi : (a, Event.initiate t) ∈ tr) (hc : ∀ x ∈ tr, x.2 ≠ Event.complete t)
     (hp : p ∈ t.dst) : InFlight tr p := sorry
 
-/-- UNSIGNED. Proved by S2.5 (#41). The completion of a transfer conflicts
+/-- Signed. Proved by S2.5 (#41). The completion of a transfer conflicts
 with every access to a destination cell, whatever the mode of that access. -/
 theorem conflict_complete {a : Agent} {t : Transfer} {y : Agent × Event} {kind : AccessKind}
     {p : Addr} {mode : Mode} (hp : p ∈ t.dst) (hy : (kind, p, mode) ∈ y.2.accesses) :
     Conflict (a, Event.complete t) y := sorry
 
-/-- UNSIGNED. Proved by S2.5 (#41). The only edge out of a completion goes
+/-- Signed. Proved by S2.5 (#41). The only edge out of a completion goes
 through the counter that the transfer is bound to. -/
 theorem SyncEdge.of_complete {reach : ShmemReach} {p : Addr} {a : Agent} {t : Transfer}
     {y : Agent × Event} (h : SyncEdge reach p (a, Event.complete t) y) :
