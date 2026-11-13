@@ -14,10 +14,10 @@ import time
 import traceback
 
 from interp import gen_inputs, tensorfile
-from . import bundle, dist, env as environment
+from . import bundle, dist, env as environment, timing
 
 ROOT = Path(__file__).resolve().parents[2]
-MODES = ('env-check', 'compare', 'dist')
+MODES = ('env-check', 'compare', 'dist', 'timing')
 TORCH_FRONTENDS = ('triton', 'tilelang', 'triton-dist', 'tilescale')
 BATCH_WALL_S = 6 * 3600
 COMPILE_ERROR_EXIT = 3
@@ -39,6 +39,8 @@ def load_batch(batch_dir):
             raise ValueError(f"test id {test['id']!r} is not a safe relative path")
     if batch['mode'] == 'dist':
         dist.check_request(batch)
+    if batch['mode'] == 'timing':
+        timing.check_request(batch)
     return batch
 
 
@@ -68,15 +70,17 @@ def child_env():
         [str(Path(__file__).resolve().parents[1]), os.environ.get('PYTHONPATH', '')]).rstrip(os.pathsep))
 
 
-def run_test(test, timeout_s, test_dir, root):
+def run_test(test, timeout_s, test_dir, root, mode='compare'):
     """Run one test in its own process; return its meta.json content."""
     meta = {'repeats': 1, 'inputs': {}, 'outputs': {}}
+    if mode == 'timing':
+        meta.update(timing.metadata(test))
     with tempfile.TemporaryDirectory(prefix='gpurun-') as work:
         work = Path(work)
         meta['inputs'] = write_inputs(test, work)
         if not all(entry['match'] for entry in meta['inputs'].values()):
             return {**meta, 'status': 'input_mismatch'}
-        (work / 'spec.json').write_text(json.dumps({'test': test, 'root': str(root)}))
+        (work / 'spec.json').write_text(json.dumps({'test': test, 'root': str(root), 'mode': mode}))
         started = time.monotonic()
         with (work / 'stdout').open('wb') as out, (work / 'stderr').open('wb') as err:
             # Its own session, so a timeout also kills compilers and launchers it started.
@@ -91,6 +95,8 @@ def run_test(test, timeout_s, test_dir, root):
         meta['wall_time_s'] = round(time.monotonic() - started, 3)
         bundle.write_log(test_dir / 'stdout.log', (work / 'stdout').read_bytes(), root)
         bundle.write_log(test_dir / 'stderr.log', (work / 'stderr').read_bytes(), root)
+        if mode == 'timing' and (work / 'timing.json').exists():
+            meta.update(json.loads((work / 'timing.json').read_text()))
         if code is None:
             return {**meta, 'status': 'timeout'}
         if code != 0:
@@ -129,8 +135,10 @@ def run_batch(batch_dir, out_dir, env=None, root=ROOT):
             try:
                 if batch['mode'] == 'dist':
                     meta = dist.run_test(test, timeout_s, test_dir, root, env, requires.get('nodes', 1))
+                elif batch['mode'] == 'timing' and (missing := timing.refusals(test, env)):
+                    meta = {'status': 'skipped_env', 'reasons': missing}
                 else:
-                    meta = run_test(test, timeout_s, test_dir, root)
+                    meta = run_test(test, timeout_s, test_dir, root, batch['mode'])
             except Exception:  # one broken test must not stop the batch
                 meta = {'status': 'runtime_error', 'runner_error': bundle.scrub(traceback.format_exc(), root)}
         bundle.write_json(test_dir / 'meta.json', meta)
@@ -220,6 +228,8 @@ def call_entry(test, root, entry, inputs, out_dir, *leading):
 def child(work):
     """Run the kernel entry and, when asked, the torch reference of one test."""
     work = Path(work)
+    if json.loads((work / 'spec.json').read_text()).get('mode') == 'timing':
+        return timing.child(work)
     test, root, inputs = read_spec(work)
     calls = [('out', test['entry'])]
     if test.get('reference', {}).get('kind') == 'torch':

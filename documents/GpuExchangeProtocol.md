@@ -90,9 +90,47 @@ Modes:
 | `env-check` | none | `env.json` only |
 | `compare` | `reference.kind`: `none` or `torch` (a torch callable run on the same GPU) | Kernel outputs, and reference outputs when asked |
 | `agree` | `pair: { original, candidate }`, same inputs | Outputs of both kernels (verifiable-optimization line) |
-| `timing` | `warmup`, `repeats` | Every run's wall time as a list; no speedup is computed on the GPU side |
+| `timing` | `pair: { original, candidate }`, `warmup`, `repeats` | Separate warm-up and measured wall-time lists and each kernel's median; no speedup or comparison |
 | `dist` | `ranks`, `launcher` (`triton-dist`, `triton-dist-logical-nodes` or `tilescale-deepep`), `logical_nodes` (the second launcher only), `repeats` | Per repeat: status, each rank's status, sha256 of each output of each rank; one full copy of every distinct output with the number of repeats that produced it |
 | `litmus` | `repeats` (large) | Histogram of observed outcomes |
+
+### Timing requests and results
+
+A `timing` test replaces `entry` with `pair`, whose `original` and `candidate`
+values are repository-relative `file.py::function` entries with the same
+`run(inputs, outputs, launch)` interface. Both use the test's `frontend`,
+`inputs`, `outputs` and `launch`. `warmup` is an integer at least zero and
+`repeats` an integer at least one, both required. There is no reference or
+request-selected device, host, rank count or launcher. `frontend: "mock"`
+is the CPU self-test route. Other frontends require a visible GPU, torch and
+the frontend module; absent prerequisites produce `skipped_env`.
+
+One child process runs every iteration in the order original, then candidate,
+on visible GPU 0 of the operator's `CUDA_VISIBLE_DEVICES`. Fresh inputs with
+identical initial bits and sentinel-filled outputs are prepared before each
+call, outside the timed interval. A fresh copy of `launch` is passed to each
+call. The clock measures the harness invocation and device completion, with
+device synchronization immediately before the start and before the end clock
+read; allocation, input transfer and result bookkeeping are excluded. Warm-up
+includes initial compilation when the harness compiles lazily. A harness must
+launch its kernel on its supplied tensors' device; timing does not move a
+kernel to another GPU or retry with different settings.
+
+In `meta.json`, `warmup`, `repeats`, `order: ["original", "candidate"]` and
+`launch` record the requested run configuration. `environment` is a relative
+link from the test directory to the bundle's `env.json`, which records GPU
+models and software versions. `timing.original` and `timing.candidate` each
+contain `warmup_wall_times_s`, `wall_times_s` and `median_s`. The median uses
+only completed measured runs (the middle value, or mean of the two middle
+values); it is `null` until one completes. Times are seconds. No output tensor,
+speedup or verdict is produced by timing.
+
+`timeout_s` bounds the whole test, including all warm-ups and repeats. A
+compilation failure, runtime failure or timeout stops the pair and preserves
+all completed measurements; a failed or interrupted call adds no duration.
+`active`, when a call was interrupted, names its `phase` (`warmup` or `repeat`),
+zero-based `index` and `kernel`; it is `null` after a completed call or before
+any call. The test status distinguishes a partial result from a completed one.
 
 ## 6. Result bundle `results/<batch-id>/`
 
