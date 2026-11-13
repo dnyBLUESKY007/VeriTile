@@ -94,6 +94,27 @@ Modes:
 | `dist` | `ranks`, `launcher` (`triton-dist`, `triton-dist-logical-nodes` or `tilescale-deepep`), `logical_nodes` (the second launcher only), `repeats` | Per repeat: status, each rank's status, sha256 of each output of each rank; one full copy of every distinct output with the number of repeats that produced it |
 | `litmus` | `repeats` (large) | Histogram of observed outcomes |
 
+### Agreement requests and results
+
+An `agree` test replaces `entry` with `pair: { original, candidate }`: each
+value is a repository-relative `file.py::function` with the same
+`run(inputs, outputs, launch)` interface. Both use the test's `frontend`,
+`inputs`, `outputs` and `launch`. Each kernel runs once, original then candidate,
+in the same child process on visible GPU 0 selected by the operator. Each call
+receives fresh copies of the same input tensors, sentinel-filled output buffers
+and launch configuration; a harness must use its supplied tensors' device.
+`repeats` may be omitted or equal 1; warm-up, a GPU-side reference, a device,
+host, rank count or launcher in the request are refused. Missing GPU, torch or
+frontend prerequisites produce `skipped_env`; `frontend: "mock"` runs the CPU
+self-test without them.
+
+The bundle contains `<test-id>/original/<name>.tensor` and
+`<test-id>/candidate/<name>.tensor`; `meta.json.outputs` maps those relative
+paths to their SHA256 values. The GPU side records only execution status and
+outputs, with no comparison or verdict. If either kernel fails or times out,
+the test has that status and does not publish a partial pair. The development
+side judges successful pairs as described in section 7.
+
 ### Timing requests and results
 
 A `timing` test replaces `entry` with `pair`, whose `original` and `candidate`
@@ -165,6 +186,21 @@ DONE                     written last
 ## 7. Judging (dev side only)
 
 Criteria of sub-issue I8.2: exact equality for integers, write footprint and NaN / Inf positions; gate `|gpu − ref| ≤ 1e-2 + 1e-2·|ref|`; strict fp32 column `1e-5 + 1e-4·|ref|`. For `agree`, the two GPU outputs are compared with each other under the same criteria, and each with the interpreter. An agent classifies every mismatch first (semantics, tolerance, environment, flaky); the user reviews the classification.
+
+For an `agree` bundle, run
+`PYTHONPATH=scripts python -m interp.compare_pair <batch> <bundle> --references <directory>`.
+The reference directory contains interpreter outputs at
+`<test-id>/<name>.tensor`. The JSON report has a row per output for
+`original/candidate`, `original/reference` and `candidate/reference`, reusing
+`scripts/interp/compare.py`: the right-hand member supplies the reference value
+in the tolerance formula. Each row reports the exact checks, gate, strict fp32
+column and error figures. `passed` uses exact checks and the gate; a strict-only
+difference remains visible and does not change that gate result. The command
+exits 0 when all requested checks pass, 1 for a failed or missing comparison,
+and 2 for an invalid or incomplete bundle/request. Without `--references`, it
+compares only the two GPU outputs and marks `reference_requested: false`; this
+does not establish agreement with the interpreter. A requested but absent
+reference, missing output or unsuccessful GPU status cannot pass.
 
 ## 8. Automation on the GPU side
 

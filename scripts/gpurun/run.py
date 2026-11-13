@@ -14,10 +14,10 @@ import time
 import traceback
 
 from interp import gen_inputs, tensorfile
-from . import bundle, dist, env as environment, timing
+from . import agree, bundle, dist, env as environment, timing
 
 ROOT = Path(__file__).resolve().parents[2]
-MODES = ('env-check', 'compare', 'dist', 'timing')
+MODES = ('env-check', 'compare', 'dist', 'timing', 'agree')
 TORCH_FRONTENDS = ('triton', 'tilelang', 'triton-dist', 'tilescale')
 BATCH_WALL_S = 6 * 3600
 COMPILE_ERROR_EXIT = 3
@@ -41,6 +41,8 @@ def load_batch(batch_dir):
         dist.check_request(batch)
     if batch['mode'] == 'timing':
         timing.check_request(batch)
+    if batch['mode'] == 'agree':
+        agree.check_request(batch)
     return batch
 
 
@@ -102,7 +104,7 @@ def run_test(test, timeout_s, test_dir, root, mode='compare'):
         if code != 0:
             return {**meta, 'status': 'compile_error' if code == COMPILE_ERROR_EXIT else 'runtime_error',
                     'exit_code': code}
-        for kind in ('out', 'ref'):
+        for kind in ('original', 'candidate') if mode == 'agree' else ('out', 'ref'):
             for path in sorted((work / kind).glob('*.tensor')):
                 (test_dir / kind).mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, test_dir / kind / path.name)
@@ -136,6 +138,8 @@ def run_batch(batch_dir, out_dir, env=None, root=ROOT):
                 if batch['mode'] == 'dist':
                     meta = dist.run_test(test, timeout_s, test_dir, root, env, requires.get('nodes', 1))
                 elif batch['mode'] == 'timing' and (missing := timing.refusals(test, env)):
+                    meta = {'status': 'skipped_env', 'reasons': missing}
+                elif batch['mode'] == 'agree' and (missing := agree.refusals(test, env)):
                     meta = {'status': 'skipped_env', 'reasons': missing}
                 else:
                     meta = run_test(test, timeout_s, test_dir, root, batch['mode'])
@@ -230,6 +234,8 @@ def child(work):
     work = Path(work)
     if json.loads((work / 'spec.json').read_text()).get('mode') == 'timing':
         return timing.child(work)
+    if json.loads((work / 'spec.json').read_text()).get('mode') == 'agree':
+        return agree.child(work)
     test, root, inputs = read_spec(work)
     calls = [('out', test['entry'])]
     if test.get('reference', {}).get('kind') == 'torch':
