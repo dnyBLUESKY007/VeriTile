@@ -125,15 +125,13 @@ collective reduction's contract would not specify a direct helper's reduction.
 ### Data Consistency and version comparison
 
 NV-USE, [Data Consistency](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html#data-consistency),
-lists “Direct multimem load reduce and store broadcast operations” among the
-access methods, with `nvshmemx_mc_ptr` as its pointer example. Parallel accesses
-by one or several PEs conflict if they address the same location and at least
-one writes; such conflicts are undefined. The two exceptions cover combinations
-of AMOs (including AMOs with wait/test), and signal updates with wait/test.
-The paragraph also says “Updates to globally accessible objects are unordered.”
-These short excerpts and the paraphrased conflict rule have the same text in
-3.6.5 and `latest` 3.8.0. Full-length requested quotations are represented by
-short excerpts and faithful paraphrases, rather than reproduced in full.
+contains the following access-list item and paragraphs (identical in `latest` 3.8.0):
+
+> Direct multimem load reduce and store broadcast operations (for example, using a pointer that was returned by nvshmemx_mc_ptr)
+
+> Two operations that were issued by the same PE or different PEs, and that access the same memory location in parallel, are in conflict when one or more of the operations performs a write. These conflicts result in undefined behavior in the OpenSHMEM memory model. An exception is made when the operations are a combination of AMOs or AMOs and wait/test operations. A second exception is made when the operations are a combination of signal updates and wait/test operations.
+
+> Updates to globally accessible objects are unordered. A PE can enforce the ordering of its updates with respect to accesses performed by the target PE using the nvshmem_fence operation. When updates performed by a PE must be ordered or made visible to PEs other than the target PE, use the nvshmem_quiet operation.
 
 **Inference:** the conflict rule applies to the documented direct access methods,
 but neither exception makes an undocumented multicast helper an AMO or a signal
@@ -156,7 +154,7 @@ the same paths under [latest](https://docs.nvidia.com/nvshmem/api/latest/):
 
 The conflict is **within 3.6.5**, not evidence that the exception was added later.
 [PrimitiveSources section 10](PrimitiveSources.md#10-still-open) compares the
-three manual passages and the release limitation. D2 remains the user's decision;
+five manual passages and the release limitation. D2 remains the user's decision;
 this document chooses neither reading.
 
 Source-ID mapping to PrimitiveSources: TD-API/TD-SEM keep their names;
@@ -181,13 +179,16 @@ manual was followed and no instruction-level claim is cited.
 | TD: [docs/kernels/nvidia/allgather.rst](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/kernels/nvidia/allgather.rst#L32) | 32, 55, 57 | Name only; no additional inter-rank memory guarantee used |
 | TD: [docs/kernels/nvidia/allreduce.rst](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/kernels/nvidia/allreduce.rst#L15) | 15, 16 | Name only; no additional inter-rank memory guarantee used |
 | TD: [docs/kernels/nvidia/index.rst](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/kernels/nvidia/index.rst#L20) | 20, 22 | Name only; no additional inter-rank memory guarantee used |
-| TD: [docs/python-api/triton-dist.language.rst](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/python-api/triton-dist.language.rst#L282) | 282, 284, 517, 519 | Cited above for pointer/capability or API requirements; other matched launch/test/implementation mentions are name only |
+| TD: [docs/python-api/triton-dist.language.rst](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/python-api/triton-dist.language.rst#L282) | 282, 284, 517, 519 | Cited above for pointer/capability or API requirements |
 | TD: [docs/testing.md](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/docs/testing.md#L85) | 85, 226 | Name only; no additional inter-rank memory guarantee used |
-| TS: [README.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/README.md#L28) | 28, 30, 51, 67, 135, 142, 145, 146, 148, 149, 211, 270 | Cited above for pointer/capability or API requirements; other matched launch/test/implementation mentions are name only |
-| TS: [docs/distributed_api_reference.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/distributed_api_reference.md#L21) | 21, 23, 60, 132, 135, 137, 142, 242, 244, 245, 247, 251, 252, 253, 254, 255, 256, 259, 261, 264, 269, 290, 341, 348, 384 | Cited above for pointer/capability or API requirements; other matched launch/test/implementation mentions are name only |
+| TS: [README.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/README.md#L135) | 135 | Cited above for pointer/capability or API requirements |
+| TS: [README.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/README.md#L28) | 28, 30, 51, 67, 142, 145, 146, 148, 149, 211, 270 | Name only; no additional inter-rank memory guarantee used |
+| TS: [docs/distributed_api_reference.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/distributed_api_reference.md#L132) | 132, 135, 137, 242, 244, 245, 247, 251, 252, 253, 254, 255, 256, 259, 261, 264, 269, 290 | Cited above for pointer/capability or API requirements |
+| TS: [docs/distributed_api_reference.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/distributed_api_reference.md#L21) | 21, 23, 60, 142, 341, 348, 384 | Name only; no additional inter-rank memory guarantee used |
 | TS: [docs/index.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/index.md#L7) | 7 | Name only; no additional inter-rank memory guarantee used |
 | TS: [docs/programming_guides/cluster_tma.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/programming_guides/cluster_tma.md#L1) | 1, 4, 29, 34, 40, 53, 54, 64, 70, 80, 94, 102, 107, 296, 312, 350 | Name only; no additional inter-rank memory guarantee used |
-| TS: [docs/release_v0_0726.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/release_v0_0726.md#L41) | 41, 99, 101, 103, 104, 106, 107, 115, 127, 128, 130, 133, 136, 137, 138, 148, 149, 153, 156, 157 | Cited above for pointer/capability or API requirements; other matched launch/test/implementation mentions are name only |
+| TS: [docs/release_v0_0726.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/release_v0_0726.md#L41) | 41 | Cited above for pointer/capability or API requirements |
+| TS: [docs/release_v0_0726.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/docs/release_v0_0726.md#L99) | 99, 101, 103, 104, 106, 107, 115, 127, 128, 130, 133, 136, 137, 138, 148, 149, 153, 156, 157 | Name only; no additional inter-rank memory guarantee used |
 | TS: [examples/distributed/allreduce/README.md](https://github.com/tile-ai/tilescale/blob/71e71457d40ed6e6a2dad297936bfdbff21d104b/examples/distributed/allreduce/README.md#L1) | 1, 3, 4, 10, 13, 16, 17, 22, 28, 29, 31, 32, 37, 39, 46, 50, 53, 62 | Name only; no additional inter-rank memory guarantee used |
 
 ## Disposition and unchecked work

@@ -48,8 +48,8 @@ did not check them again. The first reading used `latest` (3.8.0); S6.8 reads
 the frozen 3.6.5 archive and compares it with `latest` (sections 3 and 4.2).
 Rule: a proof may rely only on guarantees that
 already hold in 3.6.5. An item that the release notes date after 3.6.5 is
-flagged in its row as "not relied on". An item that cannot be dated is flagged
-as "undated, not relied on". Decision D7 lists the items.
+flagged in its row as "not relied on"; an item absent from the frozen archive
+is likewise not relied on. Decision D7 lists the excluded items.
 
 **Patterns.**
 
@@ -82,8 +82,7 @@ not documented, or the documentation of its front end defines none of its
 strings. Its note names the clause of A1.
 
 **Evidence, inference, decision.** Section 4 holds evidence: what a source
-says, using short excerpts or explicitly identified paraphrases. In the tables
-the columns `Evidence` and `Source` are evidence,
+says, quoted. In the tables the columns `Evidence` and `Source` are evidence,
 `Note` is inference and `Treatment` is the decision. Sections 6 and 7 hold the
 decisions that apply to many rows. Section 9 lists the user's decisions of
 2026-11-12, and section 10 lists what no decision covers yet.
@@ -292,105 +291,127 @@ The libcu++ pages are served under `unstable`; the unversioned path returned
 
 ### 4.2 NVSHMEM
 
-The entries below paraphrase the indicated 3.6.5 sections unless marked
-`latest only`. The comparison table gives the exact archive URL for every item.
-Short quotations are distinguished from paraphrases; long passages are not
-reproduced in full.
+The quotations below are from 3.6.5 unless marked `latest only`. The
+comparison table identifies the archive page for every item and quotes changed
+wording beside the version-of-record evidence.
 
-- **E-NV1** (NV-ORD, `nvshmem_fence`). Orders delivery to each target PE of
-  earlier symmetric-object operations before later ones, without completing
-  them. Memory-store ordering covers the caller; another thread's updates must
-  first become visible to it under the threading memory model. It does not
-  order the target PE's accesses.
-- **E-NV2** (NV-ORD, `nvshmem_quiet`). Completes operations on symmetric
-  objects issued by the calling PE. On NVLink-only systems the completed
-  updates are visible to all PEs; with NVLink and InfiniBand visibility is
-  guaranteed at the destination. The thread note covers operations posted
-  prior to its call. The local/non-collective, non-notification and unconditional
-  destination-only wording of `latest` is absent from 3.6.5.
-- **E-NV3** (NV-ORD, table; NV-MM, Ordering of Operations). The table includes
-  memory stores, blocking put/AMO and non-blocking put under Fence and Quiet,
-  but not blocking get. NV-MM excludes non-blocking operations from fence
-  ordering and requires quiet. The disagreement about non-blocking put exists
-  in 3.6.5 too; D1 retains the weaker reading.
-- **E-NV4** (NV-RMA, `nvshmem_put`). Return permits reuse of the local source;
-  remote delivery can remain incomplete and unordered. Fence between puts
-  orders their delivery to the same destination.
-- **E-NV5** (NV-RMA, `nvshmem_put_nbi`). Return initiates the operation;
-  subsequent quiet completes it.
-- **E-NV6** (NV-RMA, `nvshmem_get`, `nvshmem_get_nbi`). Blocking get has
-  delivered its local destination at return; non-blocking get has done so at
-  completion of quiet.
-- **E-NV7** (NV-RMA, `nvshmem_p`). Starts a remote transfer which may outlive
-  the call; quiet forces completion.
-- **E-NV8** (NV-SIG, `nvshmem_put_signal`). A completed signal update implies
-  delivery of that call's payload, not another transfer's data without an
-  intervening memory-ordering operation.
-- **E-NV9** (NV-SIG, `nvshmem_put_signal_nbi`). Return initiates; quiet
-  completes. Successive calls can deliver out of order without fence.
-- **E-NV10** (NV-SIG, `nvshmemx_signal_op`). Atomically applies `sig_op` to
-  `sig_addr` on the selected PE.
-- **E-NV11** (NV-SYNC, `nvshmem_signal_wait_until`). Waits until the local
-  signal satisfies the condition; the word is expected to be updated only by
-  signaling operations. Return requires completion of the signal-word update.
-- **E-NV12** (NV-SIG; NV-MM, Atomicity Guarantees). Signal updates are atomic
-  relative to other signals, signal fetch and same-datatype point-to-point
-  synchronization on the word. Concurrent NVSHMEM atomic and non-NVSHMEM
-  accesses to a location are undefined. 3.6.5 uses `e.g.` where `latest` uses
-  `for example`; this changes no guarantee.
-- **E-NV13** (NV-COLL, `nvshmem_barrier_all`, `nvshmem_barrier`). All participating
-  PEs rendezvous and their preceding stores/remote updates complete before return.
-- **E-NV14** (NV-COLL, `nvshmem_sync`, `nvshmem_sync_all`). Rendezvous completes
-  and makes visible preceding memory stores, without completing remote updates
-  issued through NVSHMEM. 3.6.5 says `via` where `latest` says `through`.
-- **E-NV15** (NV-MM, Visibility Guarantees). Mixed NVLink/InfiniBand systems
-  guarantee visibility of updates only to the local PE's symmetric objects;
-  NVLink-only systems get global visibility. This exception is already in 3.6.5.
-- **E-NV16** (NV-OVER, GPU-thread extensions). All threads in a `_block` or
-  `_warp` call's scope must call with identical arguments; otherwise behavior
-  is erroneous or can deadlock. 3.6.5 introduces them as `These extension APIs`
-  after naming the forms, rather than repeating `_block` and `_warp`.
-- **E-NV17** (NV-SETUP, `nvshmem_ptr`). Provides an address for ordinary
-  loads/stores to a remote symmetric object, or null when this is impossible.
-- **E-NV18** (NV-SETUP, `nvshmemx_mc_ptr`). Maps the symmetric address and
-  team to a multicast address for exclusive multicast use. Supported hardware
-  is Hopper or later with third-generation NVSwitch/NVLink4; unsupported
-  platforms return null. It cannot replace a symmetric address argument to
-  another NVSHMEM routine. NV-USE's access/conflict rule is E-NV27; it supplies
-  neither reduction order nor helper atomicity.
-- **E-NV19** (NV-SETUP; NV-TEAM). PE queries return the global or team-relative
-  PE number/count; team queries/translation return -1 for an invalid team.
-- **E-NV20** (NV-COLL, introduction, broadcast, fcollect). Broadcast/fcollect
-  has updated the local destination and permits source reuse at return.
-  Concurrent collective and other accesses to symmetric memory, with at least
-  one writer, are undefined.
-- **E-NV21** (NV-FAQ). Flag synchronization needs NVSHMEM wait/test, not a
-  plain loop or conditional; the API performs the required consistency work.
-- **E-NV22** (`latest only`, NV-LATEST ordering page). Newer GPU-thread notes
-  discuss block-issued operations followed by a block synchronization and an
-  elected thread's fence/quiet. Neither note exists in the 3.6.5 page. D7 does
-  not rely on this cross-thread completion/ordering explanation.
-- **E-NV23** (`latest only`, NV-LATEST ordering page). Flush routines provide
-  local completion of non-blocking puts, not remote visibility or a replacement
-  for quiet/fence. No flush routine appears in the 3.6.5 page.
-- **E-NV24** (`latest only`, NV-LATEST signal page). Counted-signal extensions
-  increment a remote byte counter as payload arrives and offer reset/load/wait.
-  These extensions are absent from the 3.6.5 page.
-- **E-NV25** (NV-REL). Release notes date 3.6.5 to 2026-03-24, flush additions
-  to 3.7.0 (2026-06-11), and counted signals plus a device-side signal-wait
-  visibility fix to 3.8.0 (2026-09-22). They are implementation/release evidence,
-  not a reason to discard a contract actually present in the 3.6.5 manual.
-- **E-NV26** (NV-REL, 3.6.5 Limitations). Barrier, quiet and wait provide only
-  source/destination ordering and visibility; the limitation denies global
-  visibility without stating an NVLink-only exception. Section 10 item 4 keeps
-  its conflict with the 3.6.5 manual explicit.
-- **E-NV27** (NV-USE, Data Consistency). Its access list includes direct
-  multicast load-reduce/store-broadcast via an `nvshmemx_mc_ptr` address.
-  Concurrent same-location accesses with a writer conflict and are undefined,
-  except combinations of AMOs (including with wait/test), or signal updates
-  with wait/test. Updates are unordered without the appropriate ordering and
-  observing synchronization. No direct reduce-store, reduction order or atomic
-  multicast operation is specified by this list. See [MultimemSources](MultimemSources.md).
+- **E-NV1** (NV-ORD, `nvshmem_fence`). "All operations on symmetric data
+  objects issued to a particular PE prior to the call to `nvshmem_fence` are
+  guaranteed to be delivered before any subsequent operations on symmetric data
+  objects to the same PE. `nvshmem_fence` guarantees order of delivery, not
+  completion." It "can enforce memory store ordering only for the calling
+  thread" and "does not have an effect on the ordering between memory accesses
+  issued by the target PE". The Notes also say: "nvshmem_quiet guarantees completion of all operations on symmetric data objects which makes the updates visible to all other PEs." This unconditional wording is part of the D2 conflict (section 10 item 4).
+- **E-NV2** (NV-ORD, `nvshmem_quiet`, 3.6.5). It "ensures completion of all operations on symmetric data objects issued by the calling PE". "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE." "A call to nvshmem_quiet by a thread completes the operations posted prior to calling nvshmem_quiet." The local/non-collective and non-notification wording is absent from 3.6.5; the comparison below quotes the newer wording.
+- **E-NV3** (NV-ORD, table; NV-MM, "Ordering of Operations"). The table marks
+  memory store, blocking put and blocking AMO under both Fence and Quiet,
+  non-blocking put under both, and blocking get under neither. NV-MM says:
+  "Non-blocking operations are not ordered by calls to `nvshmem_fence`." The
+  two disagree on non-blocking put.
+- **E-NV4** (NV-RMA, `nvshmem_put`). "The routines return after the data has
+  been copied out of the source array on the local PE. The delivery of data
+  words into the data object on the destination PE may occur in any order.
+  Furthermore, two successive put routines may deliver data out of order unless
+  a call to `nvshmem_fence` is introduced between the two calls."
+- **E-NV5** (NV-RMA, `nvshmem_put_nbi`). "The routines return after initiating
+  the operation. The operation is considered complete after a subsequent call
+  to `nvshmem_quiet`."
+- **E-NV6** (NV-RMA, `nvshmem_get`, `nvshmem_get_nbi`). Blocking: "The routines
+  return after the data has been delivered to the dest array on the local PE."
+  Non-blocking: "At the completion of `nvshmem_quiet`, the data has been
+  delivered to the dest array on the local PE."
+- **E-NV7** (NV-RMA, `nvshmem_p`). "these routines start the remote transfer
+  and may return before the data is delivered to the remote PE. Use
+  `nvshmem_quiet` to force completion".
+- **E-NV8** (NV-SIG, `nvshmem_put_signal`). "The completion of signal update
+  ... on the remote PE indicates the delivery of its corresponding dest data
+  words". "Without a memory-ordering operation, there is no implied ordering
+  between the signal update of a put-with-signal routine and another data
+  transfer."
+- **E-NV9** (NV-SIG, `nvshmem_put_signal_nbi`). "The routines return after
+  initiating the operation. The operation is considered complete after a
+  subsequent call to `nvshmem_quiet`." Two successive ones "may deliver data
+  out of order unless a call to `nvshmem_fence` is introduced".
+- **E-NV10** (NV-SIG, `nvshmemx_signal_op`). It "atomically updates sig_addr
+  with signal using operation sig_op on the specified PE".
+- **E-NV11** (NV-SYNC, `nvshmem_signal_wait_until`). It "blocks until the value
+  contained in the signal data object, sig_addr, at the calling PE satisfies
+  the wait condition". The object "is expected only to be updated as a signal,
+  through the signaling operations". "Implementations must ensure that
+  `nvshmem_signal_wait_until` does not return before the update of the memory
+  indicated by sig_addr is fully complete."
+- **E-NV12** (NV-SIG and NV-MM, "Atomicity Guarantees"). Signal operations
+  "complete as if performed atomically with respect to" other signal
+  operations, signal-fetch and "any point-to-point synchronization routine that
+  accesses the signal data object using the same datatype". Undefined
+  behaviour: "When NVSHMEM atomic operations and non-NVSHMEM operations (e.g.,
+  load and store operations) are used to access the same location
+  concurrently."
+- **E-NV13** (NV-COLL, `nvshmem_barrier_all`, `nvshmem_barrier`). It "blocks
+  the calling PE until all PEs have called `nvshmem_barrier_all`". Before that
+  it "ensures completion of all previously issued memory stores and remote
+  memory updates". The team form does the same over a team. The team-barrier description further states: "nvshmem_barrier ensures that all previously issued stores and remote memory updates, including AMOs and RMA operations, done by any of the PEs in the active set are complete before returning. On systems with only NVLink, updates are globally visible, whereas on systems with both NVLink and InfiniBand, NVSHMEM only guarantees that updates to the memory of a given PE are visible to that PE."
+- **E-NV14** (NV-COLL, `nvshmem_sync`, `nvshmem_sync_all`). It blocks until all
+  PEs of the team have called it and "only ensures completion and visibility of
+  previously issued memory stores and does not ensure completion of remote
+  memory updates issued via NVSHMEM routines".
+- **E-NV15** (NV-MM, "Visibility Guarantees"). On systems with NVLink and
+  InfiniBand the synchronization operations "only guarantee visibility of
+  updates to the local PE's symmetric objects. However, on systems with only
+  NVLink, these operations guarantee global visibility".
+- **E-NV16** (NV-OVER, NVSHMEM API Extensions for GPU Threads). "These extension APIs are collective calls that must be called by every
+  thread in the scope of the API and with exactly the same arguments."
+  Otherwise "the call results in erroneous behavior or a deadlock".
+- **E-NV17** (NV-SETUP, `nvshmem_ptr`). It "returns an address that may be used
+  to directly reference dest on the specified PE ... ordinary loads and stores
+  to dest may be performed". It returns a null pointer when the object cannot
+  be reached by loads and stores.
+- **E-NV18** (NV-SETUP, `nvshmemx_mc_ptr`). It "returns a multicast address
+  corresponding to the specified symmetric address and the team", for use with
+  multimem operations "exclusively". The hardware condition names "third-generation NVSwitch systems (NVLink4) with Hopper and later GPU architectures". "On unsupported platforms, this API returns a nullptr." Passing this multicast address to an NVSHMEM argument requiring a symmetric address "results in undefined behavior." These excerpts document the pointer requirement, not helper atomicity or reduction order; the access/conflict text is E-NV27.
+- **E-NV19** (NV-SETUP, NV-TEAM). `nvshmem_my_pe` returns "an integer between
+  0 and npes - 1"; `nvshmem_n_pes` "the number of PEs running in the program".
+  `nvshmem_team_my_pe`, `nvshmem_team_n_pes` and `nvshmem_team_translate_pe`
+  return the team-relative values, or -1 for an invalid team.
+- **E-NV20** (NV-COLL, introduction, `nvshmem_broadcast`, `nvshmem_fcollect`).
+  "Upon return from a broadcast routine ... the dest data object is updated.
+  The source data object may be safely reused." The same holds for fcollect.
+  "Concurrent accesses to symmetric memory by an NVSHMEM collective routine and
+  any other means of access—where at least one updates the symmetric
+  memory—results in undefined behavior."
+- **E-NV21** (NV-FAQ). "For synchronization with flag, the application must use nvshmem_wait_until or nvshmem_test API. A plain while loop or if condition to check flag value is not sufficient. NVSHMEM needs to perform consistency operation to ensure that the data is visible to the GPU after synchronization using flag value."
+- **E-NV22** (`latest only`, NV-LATEST ordering page, notes of `nvshmem_fence` and `nvshmem_quiet` on GPU
+  threads). "In device code, making an operation visible to the thread that
+  calls `nvshmem_fence` means ensuring that the operation has been issued
+  before the fence is called". "after a block-scoped Put operation returns and
+  all threads in the CTA synchronize with `__syncthreads`, a single thread in
+  the CTA may call `nvshmem_fence` before issuing a signal". For `quiet`: "The
+  same rule applies to GPU threads. If multiple threads issue NVSHMEM
+  operations and then synchronize so that those operations have been issued
+  before a single elected thread calls `nvshmem_quiet`, the single
+  `nvshmem_quiet` call completes the preceding operations." Absent from the corresponding 3.6.5 archive page; not relied on (D7).
+- **E-NV23** (`latest only`, NV-LATEST ordering page, `nvshmemx_flush`, `_warp`, `_block`, `_on_stream`). The
+  routines "ensure local completion of outstanding nonblocking Put operations
+  issued by the calling PE". "Flush does not guarantee that data is visible at
+  the destination PE and does not replace `nvshmem_quiet` or `nvshmem_fence`." Absent from the corresponding 3.6.5 archive page; not relied on (D7).
+- **E-NV24** (`latest only`, NV-LATEST signal page, counted signals). "The NVSHMEM counted signaling
+  extensions copy a payload and increment a remote counter by the number of
+  bytes delivered. They also provide operations to reset, load, and wait on
+  the counted signal data object." The routines are
+  `nvshmemx_signal_counted_reset`, `_load`, `_wait_until` and
+  `nvshmemx_putmem_signal_counted_nbi_block`. Absent from the corresponding 3.6.5 archive page; not relied on (D7).
+- **E-NV25** (NV-REL). 3.6.5 was published on 2026-03-24. 3.7.0 (2026-06-11):
+  "Added `nvshmemx_flush` APIs to provide source-buffer reusability without
+  guaranteeing remote visibility." 3.8.0 (2026-09-22): "Added counted-signal
+  APIs (based on counted writes) for block-scoped CFT transfers." 3.8.0, bug
+  fixes: "Fixed memory visibility after device-side signal waits." The release
+  notes list features and fixes. They do not record changes of the
+  documentation text.
+- **E-NV26** (NV-REL, "Limitations", the same sentence in the notes of 3.6.5
+  and of 3.8.0). "`nvshmem_barrier*`, `nvshmem_quiet`, and `nvshmem_wait_until`
+  only ensure ordering and visibility between the source and destination PEs.
+  They *do not* ensure global ordering and visibility."
+- **E-NV27** (NV-USE, Data Consistency). The access list includes "Direct multimem load reduce and store broadcast operations (for example, using a pointer that was returned by nvshmemx_mc_ptr)". "Two operations that were issued by the same PE or different PEs, and that access the same memory location in parallel, are in conflict when one or more of the operations performs a write. These conflicts result in undefined behavior in the OpenSHMEM memory model. An exception is made when the operations are a combination of AMOs or AMOs and wait/test operations. A second exception is made when the operations are a combination of signal updates and wait/test operations." "Updates to globally accessible objects are unordered. A PE can enforce the ordering of its updates with respect to accesses performed by the target PE using the nvshmem_fence operation. When updates performed by a PE must be ordered or made visible to PEs other than the target PE, use the nvshmem_quiet operation." No direct reduce-store, reduction order or atomic multicast operation is specified by this access list. See [MultimemSources](MultimemSources.md).
 
 No binding of TD-SHC names a flush routine or a counted-signal routine.
 
@@ -403,7 +424,7 @@ are explicitly release-note evidence, not version-tagged API pages.
 | Evidence | 3.6.5 source | Comparison with the previous `latest` evidence |
 | --- | --- | --- |
 | E-NV1 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-fence) | Same in 3.6.5. |
-| E-NV2 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) | Different: explicit NVLink-only global visibility; mixed-fabric destination visibility. No local/non-collective or non-notification wording. Thread note uses prior rather than before. |
+| E-NV2 | [gen/api/ordering.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) | Different: explicit NVLink-only global visibility; mixed-fabric destination visibility. No local/non-collective or non-notification wording. Thread note uses prior rather than before. 3.6.5 wording: "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE."; "A call to nvshmem_quiet by a thread completes the operations posted prior to calling nvshmem_quiet." Latest wording: "is a local, non-collective operation"; "the call does not synchronize with or notify other PEs"; "Visibility is only guaranteed at the destination PE."; "posted before calling" (NV-LATEST). |
 | E-NV3 | [ordering](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html), [memory model](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#ordering-of-operations) | Same in 3.6.5. |
 | E-NV4 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html#nvshmem-put) | Same in 3.6.5. |
 | E-NV5 | [gen/api/rma.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/rma.html#nvshmem-put-nbi) | Same in 3.6.5. |
@@ -413,11 +434,11 @@ are explicitly release-note evidence, not version-tagged API pages.
 | E-NV9 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html#nvshmem-put-signal-nbi) | Same in 3.6.5. |
 | E-NV10 | [gen/api/signal.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html#nvshmemx-signal-op) | Same in 3.6.5. |
 | E-NV11 | [gen/api/sync.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/sync.html#nvshmem-signal-wait-until) | Same in 3.6.5. |
-| E-NV12 | [memory model](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#atomicity-guarantees), [signals](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html) | Same guarantee; `e.g.` rather than `for example` in NV-MM (signal atomicity passage unchanged). |
+| E-NV12 | [memory model](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#atomicity-guarantees), [signals](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/signal.html) | Same guarantee; `e.g.` rather than `for example` in NV-MM (signal atomicity passage unchanged). 3.6.5 wording: "When NVSHMEM atomic operations and non-NVSHMEM operations (e.g., load and store operations) are used to access the same location concurrently." Latest wording: "When NVSHMEM atomic operations and non-NVSHMEM operations (for example, load and store operations) are used to access the same location concurrently." (NV-LATEST). |
 | E-NV13 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html) | Same in 3.6.5. |
-| E-NV14 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-sync) | Same guarantee; `via` rather than `through`. |
+| E-NV14 | [gen/api/collectives.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-sync) | Same guarantee; `via` rather than `through`. 3.6.5 wording: "only ensures completion and visibility of previously issued memory stores and does not ensure completion of remote memory updates issued via NVSHMEM routines". Latest wording: "only ensures completion and visibility of previously issued memory stores and does not ensure completion of remote memory updates issued through NVSHMEM routines" (NV-LATEST). |
 | E-NV15 | [gen/mem-model.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#visibility-guarantees) | Same in 3.6.5. |
-| E-NV16 | [api/overview.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/api/overview.html) | Same guarantee; `These extension APIs` rather than repeating the two suffixes. |
+| E-NV16 | [api/overview.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/api/overview.html) | Same guarantee; `These extension APIs` rather than repeating the two suffixes. 3.6.5 wording: "These extension APIs are collective calls that must be called by every thread in the scope of the API and with exactly the same arguments." Latest wording: "The `_block` and `_warp` extension APIs are collective calls that must be called by every thread in the scope of the API and with exactly the same arguments." (NV-LATEST). |
 | E-NV17 | [gen/api/setup.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html#nvshmem-ptr) | Same in 3.6.5. |
 | E-NV18 | [gen/api/setup.html](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html#nvshmemx-mc-ptr) | Same in 3.6.5. |
 | E-NV19 | [teams](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/teams.html), [queries](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/setup.html) | Same in 3.6.5. |
@@ -905,9 +926,13 @@ third is base Triton (tutorial 08).
 
   | Item | Evidence | Dated by | Status | Rows that say so |
   | --- | --- | --- | --- | --- |
-  | Flush routines | E-NV23 | Release notes: added in 3.7.0 (E-NV25) | After 3.6.5: not relied on | `quiet`. No row binds a flush routine |
-  | Counted signals | E-NV24 | Release notes: added in 3.8.0 (E-NV25) | After 3.6.5: not relied on | `signal_op`, `signal_wait_until`. No row binds a counted-signal routine |
+  | Flush routines | E-NV23 | Release notes: added in 3.7.0 (E-NV25); absent from the 3.6.5 ordering page | After 3.6.5: not relied on | `quiet`. No row binds a flush routine |
+  | Counted signals | E-NV24 | Release notes: added in 3.8.0 (E-NV25); absent from the 3.6.5 signal page | After 3.6.5: not relied on | `signal_op`, `signal_wait_until`. No row binds a counted-signal routine |
   | GPU-thread notes on `fence` and `quiet` | E-NV22 | Direct archive comparison: absent from the 3.6.5 ordering page | Not part of the version of record: not relied on | `fence`, `quiet` |
+
+  E-NV22 formerly supplied the cross-thread claim that one elected GPU thread’s
+  fence/quiet can order/complete earlier operations issued by other block threads
+  after synchronization; that claim is not used for 3.6.5.
 
   Consequence of the third line: a `fence` or a `quiet` is taken to cover the
   operations that the calling thread issued. That a `fence` after
@@ -991,7 +1016,8 @@ item names where this document applies the decision.
    5.7). The other names outside the modules of the ticket stay out until a
    kernel in scope uses them (section 2).
 5. **NVSHMEM version.** The version of record is 3.6.5, the one on the GPU
-   node; the documentation read reports 3.8.0. A proof may rely only on
+   node; the original reading used `latest` 3.8.0, and S6.8 directly
+   checks the frozen 3.6.5 archive. A proof may rely only on
    guarantees that already hold in 3.6.5 (section 1, D7).
 6. **`dl.wait`.** Its comparison is the intersection of both readings (I4,
    D6).
@@ -1036,15 +1062,16 @@ them.
 4. **Global visibility: conflict within 3.6.5.** The two readings are (a)
    retain D2's NVLink-only exception from the manual, or (b) weaken visibility
    to source/destination only following the release limitation. The following
-   are paraphrases of 3.6.5 passages, not a decision:
+   are quotations of 3.6.5 passages, not a decision:
 
    | Passage | What the 3.6.5 source says |
    | --- | --- |
-   | [Ordering, quiet](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) (E-NV2) | All PEs see completed updates on NVLink-only systems; mixed NVLink/InfiniBand guarantees destination visibility |
-   | [Collectives, barrier](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-barrier) (E-NV13) | Completed updates are globally visible with NVLink alone; mixed systems guarantee visibility at the PE whose memory was updated |
-   | [Memory Model, Visibility Guarantees](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#visibility-guarantees) (E-NV15) | Same explicit NVLink-only global-visibility exception for synchronization |
-   | [Using NVSHMEM, Data Consistency](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html#data-consistency) (E-NV27) | Quiet orders accesses to all PEs, observable with appropriate synchronization; that paragraph states no fabric condition |
-   | [3.6.5 release Limitations](https://github.com/NVIDIA/nvshmem/releases/tag/v3.6.5-0) (E-NV26) | Only source/destination ordering and visibility, with no global guarantee or NVLink-only exception |
+   | [Ordering, quiet](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-quiet) (E-NV2) | "On systems with only NVLink, all operations on symmetric data objects are guaranteed to be complete and visible to all PEs when nvshmem_quiet returns. On systems with both NVLink and InfiniBand, visibility is only guaranteed at the destination PE." |
+   | [Collectives, barrier](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/collectives.html#nvshmem-barrier) (E-NV13) | "nvshmem_barrier ensures that all previously issued stores and remote memory updates, including AMOs and RMA operations, done by any of the PEs in the active set are complete before returning. On systems with only NVLink, updates are globally visible, whereas on systems with both NVLink and InfiniBand, NVSHMEM only guarantees that updates to the memory of a given PE are visible to that PE." |
+   | [Memory Model, Visibility Guarantees](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/mem-model.html#visibility-guarantees) (E-NV15) | "On systems with both NVLink and InfiniBand, the NVSHMEM synchronization operations including nvshmem_barrier, nvshmem_barrier_all, nvshmem_quiet, nvshmem_wait_until_*, and nvshmem_test_* only guarantee visibility of updates to the local PE’s symmetric objects. However, on systems with only NVLink, these operations guarantee global visibility of updates to symmetric objects." |
+   | [Using NVSHMEM, Data Consistency](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/using.html#data-consistency) (E-NV27) | "When updates performed by a PE must be ordered or made visible to PEs other than the target PE, use the nvshmem_quiet operation." |
+   | [3.6.5 release Limitations](https://github.com/NVIDIA/nvshmem/releases/tag/v3.6.5-0) (E-NV26) | "`nvshmem_barrier*`, `nvshmem_quiet`, and `nvshmem_wait_until` only ensure ordering and visibility between the source and destination PEs. They *do not* ensure global ordering and visibility." |
+   | [Ordering, fence Notes](https://archive.docs.nvidia.com/nvshmem/api/3.6.5/gen/api/ordering.html#nvshmem-fence) (E-NV1; unchanged in latest) | "nvshmem_quiet guarantees completion of all operations on symmetric data objects which makes the updates visible to all other PEs." |
 
    The user still chooses whether to weaken D2. The project's topology was
    not checked, and the stronger reading is not silently made universal.
