@@ -471,11 +471,13 @@ are explicitly release-note evidence, not version-tagged API pages.
 - **E-CU4** (CU-AT). `cuda::atomic<T, Scope>` "has the same interface and
   semantics as `cuda::std::atomic`", with a thread scope.
 
-- **E-CU5** (CU-MM, [Atomicity](https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/memory_model.html#atomicity), paraphrase, accessed 2026-11-13).
-  For system-scope atomics on GPU memory accessed only by GPU threads, the
-  native-atomic P2P attribute `cudaDevP2PAttrNativeAtomicSupported` must equal 1
-  between each accessing GPU and the GPU containing the object; single-GPU
-  concurrent access is the alternative. This is a platform condition, not a
+- **E-CU5** (CU-MM, [Atomicity](https://nvidia.github.io/cccl/unstable/libcudacxx/extended_api/memory_model.html#atomicity), accessed 2026-11-13).
+  "An atomic operation is atomic at the scope it specifies if" one of the
+  listed conditions holds. For system scope when "it affects an object in GPU memory"
+  and only GPU threads access it, the native-atomic P2P attribute
+  `cudaDevP2PAttrNativeAtomicSupported` queried "between each accessing srcDev and the GPU where the object resides, dstDev"
+  "is 1", "or only GPU threads from a single GPU concurrently access it."
+  This is a platform condition, not a
   consequence of spelling the scope `sys`. The pinned TD-KCO docstring of
   [`barrier_all_intra_node_atomic_cas_block`, lines 155–157](https://github.com/ByteDance-Seed/Triton-distributed/blob/7908e4ea9010bb2238f9f05b28c904fd4b71c60a/python/triton_dist/kernels/nvidia/common_ops.py#L155-L157)
   independently requires atomic support and excludes unsupported PCIe memory.
