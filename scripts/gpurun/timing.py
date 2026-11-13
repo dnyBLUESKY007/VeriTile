@@ -11,13 +11,15 @@ from . import dist, run
 ORDER = ('original', 'candidate')
 
 
-def check_request(batch):
+def check_request(batch, mode='timing'):
     """Validate timing fields before generating files or starting a process."""
     for test in batch.get('tests', []):
         for key, minimum in (('warmup', 0), ('repeats', 1)):
             if type(test.get(key)) is not int or test[key] < minimum:
                 raise ValueError(f'{key} must be an integer >= {minimum}')
         pair = test.get('pair')
+        if 'entry' in test:
+            raise ValueError(f'{mode} uses pair, not an entry key')
         if not isinstance(pair, dict) or set(pair) != set(ORDER):
             raise ValueError('pair must name original and candidate')
         for entry in pair.values():
@@ -27,11 +29,14 @@ def check_request(batch):
             if not sep or not name.isidentifier() or not path or Path(path).is_absolute() or '..' in Path(path).parts:
                 raise ValueError('pair entries must be repository-relative file::function strings')
         if test.get('frontend') not in (*run.TORCH_FRONTENDS, 'mock'):
-            raise ValueError('unknown timing frontend')
-        if test.get('reference', {}).get('kind', 'none') != 'none':
-            raise ValueError('timing has no reference')
+            raise ValueError(f'unknown {mode} frontend')
+        reference = test.get('reference', {})
+        if not isinstance(reference, dict):
+            raise ValueError(f'{mode} reference must be an object')
+        if reference.get('kind', 'none') != 'none':
+            raise ValueError(f'{mode} has no reference')
         if any(key in test for key in ('device', 'host', 'hostname', 'ranks', 'launcher')):
-            raise ValueError('timing uses one operator-selected GPU, with no request device or launcher')
+            raise ValueError(f'{mode} uses one operator-selected GPU, with no request device or launcher')
         if not isinstance(test.get('launch', {}), dict):
             raise ValueError('launch must be an object')
         for field in ('inputs', 'outputs'):
@@ -42,16 +47,16 @@ def check_request(batch):
                 raise ValueError(f'{field} names must be unique')
 
 
-def refusals(test, env):
+def refusals(test, env, mode='timing'):
     if test['frontend'] == 'mock':
         return []
     module = {'triton-dist': 'triton_dist', 'tilescale': 'tilelang'}.get(test['frontend'], test['frontend'])
     reasons = []
     if not env.get('gpus'):
-        reasons.append('timing needs one visible GPU')
+        reasons.append(f'{mode} needs one visible GPU')
     for name in ('torch', module):
         if not env.get('versions', {}).get(name):
-            reasons.append(f'timing needs {name} in the environment')
+            reasons.append(f'{mode} needs {name} in the environment')
     return reasons
 
 

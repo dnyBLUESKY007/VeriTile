@@ -3,6 +3,10 @@
 Run `PYTHONPATH=scripts python -m interp.compare_pair REQUEST BUNDLE
 --references DIRECTORY`. Reference files are `<test-id>/<output>.tensor`.
 Omit --references to compare only the original with the candidate.
+
+The original/candidate row compares candidate (under test) against original
+(reference). Original/reference and candidate/reference each compare the GPU
+output against the interpreter reference. Tolerance scales with the reference.
 """
 import argparse
 import json
@@ -16,8 +20,8 @@ from .report import read_if_present
 
 
 def compare_pair(original, candidate, reference=None, sentinel=None):
-    """Use the existing exact, gate and strict checks for each requested pair."""
-    pairs = [('original/candidate', original, candidate)]
+    """Compare candidate to original, then each GPU output to the interpreter."""
+    pairs = [('original/candidate', candidate, original)]
     if reference is not None:
         pairs.extend((('original/reference', original, reference),
                       ('candidate/reference', candidate, reference)))
@@ -37,12 +41,12 @@ def build(request_dir, bundle_dir, references=None):
     rows = []
     for test in batch['tests']:
         status = manifest['tests'].get(test['id'], 'not_run')
+        if status != 'ok':
+            rows.append({'test': test['id'], 'output': None, 'status': status, 'against': None, 'passed': False})
+            continue
         for spec in test['outputs']:
             row = {'test': test['id'], 'output': spec['name'], 'status': status,
                    'against': None, 'passed': False}
-            if status != 'ok':
-                rows.append(row)
-                continue
             try:
                 file = spec['name'] + '.tensor'
                 original = read_if_present(bundle / test['id'] / 'original' / file)

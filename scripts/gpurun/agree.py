@@ -9,12 +9,14 @@ def check_request(batch):
     for test in batch.get('tests', []):
         if type(test.get('repeats', 1)) is not int or test.get('repeats', 1) != 1 or 'warmup' in test:
             raise ValueError('agree runs each kernel once, without warm-up')
+        if not isinstance(test.get('outputs'), list) or not test['outputs']:
+            raise ValueError('agree requires a non-empty outputs list')
         # The same pair, tensor names and launch interface as a single timing iteration.
-        timing.check_request({'tests': [{**test, 'warmup': 0, 'repeats': 1}]})
+        timing.check_request({'tests': [{**test, 'warmup': 0, 'repeats': 1}]}, mode='agree')
 
 
 def refusals(test, env):
-    return [reason.removeprefix('timing ') for reason in timing.refusals(test, env)]
+    return timing.refusals(test, env, mode='agree')
 
 
 def child(work):

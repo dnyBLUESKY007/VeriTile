@@ -25,6 +25,8 @@ def invoke(name, inputs, outputs, launch):
     assert set(inputs) == {'x'}
     assert launch['grid'] == [1]
     assert set(outputs) == {'out'}
+    with Path(__file__).with_name('input-hashes').open('a') as out:
+        out.write(name + ' ' + inputs['x'].sha256() + '\\n')
     inputs.clear()
     launch['grid'].append(2)
     calls = Path(__file__).with_name('calls')
@@ -81,10 +83,12 @@ class Timing(unittest.TestCase):
         return json.loads((work / 'timing.json').read_text())
 
     def test_fake_clock_warmups_and_even_odd_medians(self):
-        for repeats, median in ((3, 3), (4, 4)):
+        for repeats, median in ((3, 2), (4, 3)):
+            shutil.rmtree(self.root / 'work', ignore_errors=True)
+            (self.root / 'calls').unlink(missing_ok=True)
             with self.subTest(repeats=repeats):
-                # Pair intervals: warmup 100/200; measured 1/2, 5/10, 3/6, 7/14.
-                durations = [100, 200, 1, 2, 5, 10, 3, 6, 7, 14][:2 * (1 + repeats)]
+                # Neither the odd nor even measured mean equals its median.
+                durations = [100, 200, 1, 2, 9, 18, 2, 4, 4, 8][:2 * (1 + repeats)]
                 values, clock = [], 0
                 for duration in durations:
                     values.extend((clock, clock + duration))
@@ -93,13 +97,11 @@ class Timing(unittest.TestCase):
                 for name, factor in (('original', 1), ('candidate', 2)):
                     record = result['timing'][name]
                     self.assertEqual(record['warmup_wall_times_s'], [100 * factor])
-                    self.assertEqual(record['wall_times_s'], [x * factor for x in (1, 5, 3, 7)[:repeats]])
+                    self.assertEqual(record['wall_times_s'], [x * factor for x in (1, 9, 2, 4)[:repeats]])
                     self.assertEqual(record['median_s'], median * factor)
                 self.assertIsNone(result['active'])
                 self.assertEqual((self.root / 'calls').read_text().splitlines(),
                                  ['original', 'candidate'] * (1 + repeats))
-                shutil.rmtree(self.root / 'work')
-                (self.root / 'calls').unlink()
 
     def test_gpu_clock_is_bracketed_by_sync_and_buffers_are_outside_it(self):
         events = []
@@ -143,7 +145,7 @@ class Timing(unittest.TestCase):
 
     def test_timeout_and_compile_error_keep_checkpoint(self):
         tests = [case(id='compile', warmup=0, launch={'grid': [1], 'stop_on': 1, 'compile': True}),
-                 case(id='timeout', warmup=0, timeout_s=0.5,
+                 case(id='timeout', warmup=0, timeout_s=3,
                       launch={'grid': [1], 'stop_on': 2, 'hang': True})]
         self.write_batch(tests)
         self.assertEqual(run.run_batch(self.batch, self.out, env={'gpus': []}, root=self.root), 0)
@@ -161,7 +163,20 @@ class Timing(unittest.TestCase):
         self.assertEqual(run.run_batch(self.batch, self.out, env={'gpus': []}, root=self.root), 0)
         self.assertEqual(json.loads((self.out / 'manifest.json').read_text())['tests'],
                          {'no_gpu': 'skipped_env', 'mismatch': 'input_mismatch'})
+        skipped = json.loads((self.out / 'no_gpu/meta.json').read_text())
+        self.assertEqual(set(skipped), {'status', 'reasons'})
+        mismatch = json.loads((self.out / 'mismatch/meta.json').read_text())
+        self.assertNotIn('active', mismatch)
+        self.assertNotIn('wall_time_s', mismatch)
+        for record in mismatch['timing'].values():
+            self.assertEqual(record, {'warmup_wall_times_s': [], 'wall_times_s': [], 'median_s': None})
         self.assertFalse((self.root / 'calls').exists())
+
+    def test_missing_launch_defaults_to_empty_configuration(self):
+        test = case()
+        del test['launch']
+        timing.check_request({'tests': [test]})
+        self.assertEqual(timing.metadata(test)['launch'], {})
 
     def test_missing_torch_or_frontend_is_skipped_with_a_visible_gpu(self):
         for versions in ({'torch': '2.0'}, {'triton': '3.5.1'}):
@@ -182,7 +197,8 @@ class Timing(unittest.TestCase):
                       {'pair': {'original': '../kernels.py::original', 'candidate': 'kernels.py::candidate'}},
                       {'frontend': 'unknown'}, {'device': 1}, {'launch': []},
                       {'inputs': [dict(tensor_input('../escape', 1))]},
-                      {'reference': {'kind': 'torch'}}):
+                      {'reference': {'kind': 'torch'}}, {'reference': []}, {'reference': None},
+                      {'reference': 'none'}, {'entry': 'kernels.py::original'}):
             with self.subTest(extra=extra):
                 self.write_batch([case(**extra)])
                 with self.assertRaises(ValueError):
@@ -201,13 +217,20 @@ class Timing(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
         meta = json.loads((self.out / 'pair/timing/meta.json').read_text())
         self.assertEqual(meta['status'], 'ok')
+        self.assertEqual(set(meta), {'status', 'repeats', 'inputs', 'outputs', 'warmup', 'order',
+                                     'launch', 'environment', 'timing', 'wall_time_s', 'active'})
+        self.assertEqual(set(meta['timing']), {'original', 'candidate'})
         self.assertEqual(meta['order'], ['original', 'candidate'])
         self.assertEqual(meta['launch'], {'grid': [1]})
         self.assertTrue((self.out / 'pair/timing' / meta['environment']).is_file())
         self.assertTrue((self.out / 'DONE').is_file())
         for name in timing.ORDER:
+            self.assertEqual(set(meta['timing'][name]), {'warmup_wall_times_s', 'wall_times_s', 'median_s'})
             self.assertEqual(len(meta['timing'][name]['wall_times_s']), 1)
             self.assertEqual(meta['timing'][name]['warmup_wall_times_s'], [])
+        expected_hash = case()['inputs'][0]['sha256']
+        self.assertEqual((self.root / 'input-hashes').read_text().splitlines(),
+                         [f'original {expected_hash}', f'candidate {expected_hash}'])
         for path in self.out.rglob('*'):
             if path.is_file():
                 self.assertNotRegex(path.read_text(), r'\b(PASS|FAIL|speedup|verdict)\b')
