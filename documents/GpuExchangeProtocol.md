@@ -1,6 +1,6 @@
 # GPU exchange protocol v1
 
-Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Amended on 2026-11-12 by sub-issue C-I3.1, not yet confirmed by the GPU side: `dist` mode (sections 5 and 6), the operator's node count, and two NVSHMEM versions in `env.json` (sections 6 and 9). Amended on 2026-11-12 by sub-issue C-I3.2, not yet confirmed by the GPU side: the launcher `triton-dist-logical-nodes` with the test field `logical_nodes` (sections 5, 6 and 9). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
+Status: agreed on 2026-11-10 (sub-issue I9.1). Amended on 2026-11-11 by sub-issue I9.2, not yet confirmed by the GPU side: the command is run with `PYTHONPATH=scripts`, and `entry` names a launch harness (section 5). Amended on 2026-11-12 by sub-issue C-I3.1, not yet confirmed by the GPU side: `dist` mode (sections 5 and 6), the operator's node count, and two NVSHMEM versions in `env.json` (sections 6 and 9). Amended on 2026-11-12 by sub-issue C-I3.2, not yet confirmed by the GPU side: the launcher `triton-dist-logical-nodes` with the test field `logical_nodes` (sections 5, 6 and 9). Amended on 2026-11-13 by sub-issue V4.1, not yet confirmed by the GPU side: paired `timing`, warm-up and measurement records (sections 5, 6 and 10). Amended on 2026-11-13 by sub-issue V4.3, not yet confirmed by the GPU side: `agree` output pairs and development-side comparison (sections 5 to 7). Operating instructions for the GPU-side agent are in [GpuRemoteAgentInstructions.md](GpuRemoteAgentInstructions.md).
 
 Purpose: the development machine (no GPU) asks an sm_90 (Hopper) server to run kernels and gets raw results back, automatically. GPU results are empirical evidence only; they never define semantics.
 
@@ -103,6 +103,7 @@ value is a repository-relative `file.py::function` with the same
 in the same child process on visible GPU 0 selected by the operator. Each call
 receives fresh copies of the same input tensors, sentinel-filled output buffers
 and launch configuration; a harness must use its supplied tensors' device.
+`outputs` must be non-empty and `entry` cannot appear beside `pair`.
 `repeats` may be omitted or equal 1; warm-up, a GPU-side reference, a device,
 host, rank count or launcher in the request are refused. Missing GPU, torch or
 frontend prerequisites produce `skipped_env`; `frontend: "mock"` runs the CPU
@@ -120,7 +121,8 @@ side judges successful pairs as described in section 7.
 A `timing` test replaces `entry` with `pair`, whose `original` and `candidate`
 values are repository-relative `file.py::function` entries with the same
 `run(inputs, outputs, launch)` interface. Both use the test's `frontend`,
-`inputs`, `outputs` and `launch`. `warmup` is an integer at least zero and
+`inputs`, `outputs` and `launch` (default `{}`). An `entry` key beside `pair`
+is refused. `warmup` is an integer at least zero and
 `repeats` an integer at least one, both required. There is no reference or
 request-selected device, host, rank count or launcher. `frontend: "mock"`
 is the CPU self-test route. Other frontends require a visible GPU, torch and
@@ -152,6 +154,12 @@ all completed measurements; a failed or interrupted call adds no duration.
 `active`, when a call was interrupted, names its `phase` (`warmup` or `repeat`),
 zero-based `index` and `kernel`; it is `null` after a completed call or before
 any call. The test status distinguishes a partial result from a completed one.
+The top-level `wall_time_s` covers the whole child-process test, including
+process startup and warm-up; it is not a kernel measurement. If input hashes
+mismatch, the child never runs: `active`, `wall_time_s` and child-written
+measurements are absent, while the preinitialized timing lists remain empty
+and medians remain `null`. A `skipped_env` record contains only `status` and
+`reasons`.
 
 ## 6. Result bundle `results/<batch-id>/`
 
@@ -164,6 +172,17 @@ env.json                 GPU model, compute capability, driver, CUDA, torch, tri
 <test-id>/out/<name>.tensor
 <test-id>/ref/<name>.tensor     only when reference.kind = torch
 <test-id>/stdout.log, stderr.log    truncated at 1 MB
+
+agree, instead of out/<name>.tensor:
+<test-id>/original/<name>.tensor
+<test-id>/candidate/<name>.tensor
+<test-id>/meta.json      status and SHA256 for both output sets; no GPU-side judgment
+
+timing, with no output tensor files:
+<test-id>/meta.json      warmup, repeats, order, launch, environment (link to env.json),
+                         timing.{original,candidate}: warmup_wall_times_s,
+                         wall_times_s, median_s; active call and whole-test wall_time_s
+                         when the child ran (section 5 describes early exits)
 
 dist, instead of out/<name>.tensor:
 <test-id>/meta.json      also ranks, launcher, runs (per repeat: status, exit code, wall time,
@@ -192,8 +211,11 @@ For an `agree` bundle, run
 The reference directory contains interpreter outputs at
 `<test-id>/<name>.tensor`. The JSON report has a row per output for
 `original/candidate`, `original/reference` and `candidate/reference`, reusing
-`scripts/interp/compare.py`: the right-hand member supplies the reference value
-in the tolerance formula. Each row reports the exact checks, gate, strict fp32
+`scripts/interp/compare.py`. In the `original/candidate` row, the candidate is
+the value under test and the original is the reference: `compare(candidate,
+original)` scales the tolerance with the original value. The other two rows
+use `compare(original, reference)` and `compare(candidate, reference)`, so the
+interpreter supplies the reference value in both. Each row reports the exact checks, gate, strict fp32
 column and error figures. `passed` uses exact checks and the gate; a strict-only
 difference remains visible and does not change that gate result. The command
 exits 0 when all requested checks pass, 1 for a failed or missing comparison,
@@ -238,7 +260,7 @@ Recorded but not pinned by the dev side: GPU driver, CUDA toolkit, Python, PyTor
 | Limit | Value | Reason |
 | --- | --- | --- |
 | Polling interval | 5 minutes while idle; no polling while a batch runs | Batches take minutes to hours, so latency does not matter; 12 requests an hour is far below API limits |
-| Per-test timeout | `timeout_s`, default 600 s; in `dist`, for all repeats of the test together | A hung kernel must not hold the queue |
+| Per-test timeout | `timeout_s`, default 600 s; in `dist` and `timing`, for all repeats of the test together (including timing warm-up) | A hung kernel must not hold the queue |
 | Per-batch wall time | 6 hours | The batch is then closed with the tests finished so far |
 | File size | 50 MB | GitHub warns above 50 MB and rejects above 100 MB |
 | Batch size | 100 MB | Keeps a fetch of `gpu-results` fast |
