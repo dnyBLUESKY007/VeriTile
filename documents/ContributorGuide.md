@@ -19,6 +19,16 @@ For everyone who works on a ticket of `dnyBLUESKY007/VeriTile` outside the coord
 
 Accept an assigned ticket by commenting `Accept: <login>` on it within two working days. (GitHub can record you as assignee only after you have commented.) To give it back, comment `Release: <login>` with the reason and the state of the work. A ticket with no pull request (a draft counts) and no progress comment five working days after it was accepted is asked about once and may then go to someone else.
 
+**Who works on a ticket** is a label of its own, independent of whether the ticket is ready (`parallel-ready`) or taken (`claimed`):
+
+| Label | Worked on by |
+| --- | --- |
+| `owner:coordinator` | the coordinating session and its lanes |
+| `owner:codex` | the user's Codex sessions |
+| `owner:contributor` | a human contributor, named in the assignee field |
+
+A ticket without an `owner:` label has not been given out. The coordinator sets and changes these labels; when a ticket moves from one party to another, only the label and the assignee change. To list one party's open tickets: `gh api 'repos/dnyBLUESKY007/VeriTile/issues?labels=owner:codex&state=open&per_page=100' -q '.[]|"#\(.number) \(.title)"'`.
+
 **Open pool.** An open ticket with both labels `parallel-ready` and `parallel-easy` and no assignee may be taken by anyone:
 
 ```sh
