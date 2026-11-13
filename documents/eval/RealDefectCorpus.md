@@ -55,17 +55,19 @@ the rest of each passage is summarized, rather than copied in full.
 
 | Source passage | Excerpt and documented scope | Applicability to the two reports |
 | --- | --- | --- |
-| [`instructions.md:44–50`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L44-L50) | For synchronous `T.copy`, “it is safe to use `dst`” after the statement; the implementation must preserve this observable contract. | Orders consumption of that copy's destination. It says neither that any raw shared predicate read is latched across all threads before an in-branch write (#3527), nor that a later overwrite waits for other warp groups' earlier reads (#2613). |
-| [`instructions.md:52–66`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L52-L66) | For explicitly asynchronous copying, “A barrier is still required” for cooperative production and cross-thread consumption; the passage describes automatic insertion before the first destination read in most programs, and explicit synchronization when needed. | A copy-destination read-after-write contract, not a general shared read-before-write contract. Neither reported hazard is established as covered. |
+| [`instructions.md:44–50`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L44-L50) | For synchronous `T.copy`, “it is safe to use `dst`” after the statement; the implementation must preserve this observable contract. | Covers #2613's read after the all-thread `T.copy`: dropping the required synchronization violates this contract, so that half is a compiler defect outside the proof boundary. It does not cover #3527's raw predicate read before an in-branch write or #2613's later overwrite before other groups finish earlier reads. |
+| [`instructions.md:52–66`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L52-L66) | For explicitly asynchronous copying, “A barrier is still required” for cooperative production and cross-thread consumption; the passage describes automatic insertion before the first destination read in most programs, and explicit synchronization when needed. | A copy-destination read-after-write contract, not a general shared read-before-write contract. It does not establish coverage of #3527's predicate hazard or #2613's cross-iteration overwrite; #2613's synchronous-copy read is covered by lines 44–50 above. |
 | [`instructions.md:124–128`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L124-L128) | In high-level pipelines, “you usually don’t need to write explicit barriers”; named passes arrange producer/consumer order and synchronization. | Qualified high-level-pipeline guidance. #3527's raw condition and #2613's explicit two-group, `num_stages=0` loop are not promised whole-block read-before-write order by this statement. |
 | [`language_basics.md:209–214`](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/language_basics.md#L209-L214) | The asynchronous-copy discussion says “before the first read from `dst`”; it requires an explicit completion wait and describes the cross-thread barrier. | Reinforces the first-use copy guarantee; no guarantee for either disputed write-after-read pattern. Line 214 completes the sentence that begins in the requested 209–213 range. |
 
-**Inference under the current rules:** neither report can be dismissed solely
-as a compiler violation of a documented source guarantee. Both are retained as
-source-level race candidates when no unstated automatic edge is granted. This
-is a corpus grade, not a new front-end definition, an implemented detection, or
-a proof that the compiler's claimed contract is complete. A stronger documented
-contract would require reassessment.
+**Inference under the current rules:** #3527's predicate hazard and #2613's
+cross-iteration overwrite remain source-level race candidates when no unstated
+automatic edge is granted. In contrast, #2613's read after the all-thread
+synchronous `T.copy` is covered by the documented destination-use guarantee:
+that half remains a compiler defect outside the proof boundary. These are corpus
+grades, not new front-end definitions, implemented detections, or proof that the
+compiler's claimed contract is complete. A stronger documented contract would
+require reassessment.
 
 ## Corpus
 
@@ -214,6 +216,10 @@ contract would require reassessment.
   explanation:** a barrier covering one thread group incorrectly clears
   other groups' pending accesses. It retracts async execution as the cause
   and the earlier claim that the older GPU architecture was unaffected.
+  The correction distinguishes a cross-iteration overwrite from a read after
+  the all-thread `T.copy`, whose required synchronization was dropped on the
+  older architecture. These two source-ordering obligations have different
+  grades below; no generated-code semantics is imported into the model.
   The tested repair is an edit to generated CUDA, not a verified upstream
   compiler fix.
 - **Pin applicability:** the reported
@@ -238,8 +244,14 @@ contract would require reassessment.
   it does not promise that both other groups have finished an earlier read
   before the next copy overwrites that storage. The qualified high-level
   pipeline statement also does not establish this edge for `num_stages=0`.
-  The prior unconditional compiler-only classification is withdrawn. This
-  does not generalize to ordinary pipelined GEMM or prove a runtime failure.
+  This withdraws the compiler-only grade for the cross-iteration overwrite,
+  not for the whole report. **Compiler defect outside the proof boundary**
+  remains the grade for the read after the all-thread synchronous `T.copy`:
+  [instructions.md:44–50](https://github.com/tile-ai/tilelang/blob/35850c06875bcc84751417982bf7b4d662bafdbc/docs/programming_guides/instructions.md#L44-L50)
+  guarantees safe consumption of that destination after the statement. Dropping
+  synchronization needed for that guarantee is a lowering failure, not a
+  source-level counterexample. Neither grade establishes a runtime failure at
+  the pin or generalizes to ordinary pipelined GEMM.
 
 ### E3-DE-589 — Output initialization races with communication stream
 
@@ -363,6 +375,8 @@ evidence grades. Other relevant synchronization reports are explicitly
 excluded from that graded seed pending source-contract/pin audit, rather than
 called non-defects. The 21 reports singled out in #423 were body-screened;
 exclusion of them is not an assertion that their alleged defect is false.
+The exclusions marked as needing audit are leads not yet examined for their
+source contract and pin applicability; body screening alone is not that audit.
 
 ### Triton-distributed
 
@@ -411,7 +425,7 @@ Query counts (`race` / `synchronization` / `hang` / `deadlock`): **50 / 52 / 40 
 | `race` | [#2604](https://github.com/tile-ai/tilelang/issues/2604) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
 | `race` | [#2605](https://github.com/tile-ai/tilelang/issues/2605) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
 | `race` | [#2612](https://github.com/tile-ai/tilelang/issues/2612) | Excluded: guarded-loop shared accesses lose ordering; source-contract and participant-set audit remains open. |
-| `race` | [#2613](https://github.com/tile-ai/tilelang/issues/2613) | Included: E3-TL-2613; unpipelined cross-group reuse candidate, with source-contract limits recorded above. |
+| `race` | [#2613](https://github.com/tile-ai/tilelang/issues/2613) | Included: E3-TL-2613; cross-iteration reuse candidate and a distinct synchronous-copy compiler defect, graded separately above. |
 | `race` | [#2623](https://github.com/tile-ai/tilelang/issues/2623) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
 | `race` | [#2627](https://github.com/tile-ai/tilelang/issues/2627) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
 | `race` | [#2628](https://github.com/tile-ai/tilelang/issues/2628) | Excluded: compiler read/write-order or packed-storage ownership allegation; source-level contract/pin audit remains open. |
@@ -457,11 +471,11 @@ Query counts (`race` / `synchronization` / `hang` / `deadlock`): **50 / 52 / 40 
 | `synchronization` | [#2192](https://github.com/tile-ai/tilelang/issues/2192) | Excluded: additional synchronization/ownership lead; source contract, minimal control and applicability at the pin need audit. |
 | `synchronization` | [#2376](https://github.com/tile-ai/tilelang/issues/2376) | Not a synchronization defect report: usage, feature or contract-design discussion; no accepted counterexample here. |
 | `synchronization` | [#2524](https://github.com/tile-ai/tilelang/issues/2524) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
-| `synchronization` | [#2539](https://github.com/tile-ai/tilelang/issues/2539) | Excluded: addressing, layout, dtype or instruction-selection correctness issue; no source synchronization case established. |
+| `synchronization` | [#2539](https://github.com/tile-ai/tilelang/issues/2539) | Excluded: reported LoopUnswitching optimization miscompile merges distinct buffer guards; compiler defect outside the source-synchronization proof boundary. |
 | `synchronization` | [#2556](https://github.com/tile-ai/tilelang/issues/2556) | Excluded: partial active-thread region loses ordering; contract for that participant set and pin applicability need audit. |
 | `synchronization` | [#2566](https://github.com/tile-ai/tilelang/issues/2566) | Excluded: single-iteration automatic pipeline hang with controls; no independently audited source defect at the pin. |
 | `synchronization` | [#2612](https://github.com/tile-ai/tilelang/issues/2612) | Excluded: guarded-loop shared accesses lose ordering; source-contract and participant-set audit remains open. |
-| `synchronization` | [#2613](https://github.com/tile-ai/tilelang/issues/2613) | Included: E3-TL-2613; unpipelined cross-group reuse candidate, with source-contract limits recorded above. |
+| `synchronization` | [#2613](https://github.com/tile-ai/tilelang/issues/2613) | Included: E3-TL-2613; cross-iteration reuse candidate and a distinct synchronous-copy compiler defect, graded separately above. |
 | `synchronization` | [#2628](https://github.com/tile-ai/tilelang/issues/2628) | Excluded: compiler read/write-order or packed-storage ownership allegation; source-level contract/pin audit remains open. |
 | `synchronization` | [#2668](https://github.com/tile-ai/tilelang/issues/2668) | Excluded: additional synchronization/ownership lead; source contract, minimal control and applicability at the pin need audit. |
 | `synchronization` | [#2707](https://github.com/tile-ai/tilelang/issues/2707) | Excluded: lowering-level or architecture-specific allegation; no instruction semantics imported into this source corpus. |
@@ -497,7 +511,7 @@ Query counts (`race` / `synchronization` / `hang` / `deadlock`): **50 / 52 / 40 
 | `hang` | [#506](https://github.com/tile-ai/tilelang/issues/506) | Excluded: aggregated failures need per-case isolation; a bundle is not one synchronization defect. |
 | `hang` | [#1026](https://github.com/tile-ai/tilelang/issues/1026) | Excluded: additional synchronization/ownership lead; source contract, minimal control and applicability at the pin need audit. |
 | `hang` | [#1069](https://github.com/tile-ai/tilelang/issues/1069) | Not a kernel synchronization report: compilation, tooling, indexing, arithmetic or runtime-support failure. |
-| `hang` | [#1132](https://github.com/tile-ai/tilelang/issues/1132) | Not a synchronization defect report: usage, feature or contract-design discussion; no accepted counterexample here. |
+| `hang` | [#1132](https://github.com/tile-ai/tilelang/issues/1132) | Excluded: reported hang at a larger thread count; synchronization lead needs source-contract and pin audit. |
 | `hang` | [#1150](https://github.com/tile-ai/tilelang/issues/1150) | Excluded: correctness/hang lead without an isolated source synchronization cause or established pin applicability. |
 | `hang` | [#1370](https://github.com/tile-ai/tilelang/issues/1370) | Excluded: correctness/hang lead without an isolated source synchronization cause or established pin applicability. |
 | `hang` | [#1498](https://github.com/tile-ai/tilelang/issues/1498) | Excluded: correctness/hang lead without an isolated source synchronization cause or established pin applicability. |
