@@ -27,7 +27,7 @@ and constexpr gaps assigned to #77 by the census. Its source hooks cover
 `with_triton_signature`, `with_triton_call` and source-procedure definitions;
 other helper bindings and effects need the separately tracked source work.
 -/
-import VeriTile.Triton.DSL.SourceProcedures
+import VeriTile.Dist.Frontend.TritonExt.SourceHelperSyntax
 import VeriTile.Triton.DSL.PythonFullConstructors
 
 namespace VeriTile.Dist.Frontend.TritonExt
