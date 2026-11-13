@@ -480,6 +480,7 @@ globs = [
   "tests.lean.WelfordSourceContexts",
   "tests.lean.InterpReflectSmoke",
   "tests.lean.dist.TensorDescriptorSource",
+  "tests.lean.dist.SourceHelperSyntax",
 ]
 
 # Fork targets for the async and distributed line. Each main target has its own

@@ -181,7 +181,7 @@ def pointerCall (x : RegionName) : ComputeKernel :=
   }
 example (x : RegionName) : descriptorCall x = pointerCall x := rfl
 
--- Triton v3.5.1 core.py:2073 supports ranks 2–5; exercise the upper bound.
+-- Triton v3.5.1 core.py:2247 supports ranks 2–5; exercise the upper bound.
 example (x : Region .fp32) : ComputeKernel := triton {
   d = tl.make_tensor_descriptor(x, shape=[8, 8, 8, 8, 8], strides=[4096, 512, 64, 8, 1], block_shape=[2, 2, 2, 2, 4])
   v = d.load([0, 0, 0, 0, 0])
@@ -222,5 +222,68 @@ example (word : Nat) : ComputeKernel := triton {
   tl.source_integer word_arg = tl.uint32
   uniform = uint_to_uniform_float(word_arg)
 }
+
+-- Source procedures retain the destination ABI's implicit FP16 store conversion.
+def descriptorProcedure : SourceProcedure :=
+  with_triton_params (x_ptr,y_ptr) constexpr_args [] in triton {
+    d = tl.make_tensor_descriptor(x_ptr, shape=[4,4], strides=[4,1], block_shape=[2,4])
+    v = d.load([0,0])
+    out = tl.make_tensor_descriptor(y_ptr, shape=[4,4], strides=[4,1], block_shape=[2,4])
+    out.store([0,0],v)
+  }
+def legacyDescriptorProcedure : SourceProcedure :=
+  triton_source_procedure (x_ptr,y_ptr) constexpr_args [] fp32_constants [] {
+    d = tl.make_tensor_descriptor(x_ptr, shape=[4,4], strides=[4,1], block_shape=[2,4])
+    v = d.load([0,0])
+    out = tl.make_tensor_descriptor(y_ptr, shape=[4,4], strides=[4,1], block_shape=[2,4])
+    out.store([0,0],v)
+  }
+def pointerProcedure : SourceProcedure :=
+  triton_source_procedure (x_ptr,y_ptr) constexpr_args [] fp32_constants [] {
+    d = tl.make_block_ptr(base=x_ptr, shape=(4,4), strides=(4,1), offsets=(0,0), block_shape=(2,4))
+    v = tl.load(tl.advance(d,(0,0)), boundary_check=[0,1], padding_option="zero")
+    out = tl.make_block_ptr(base=y_ptr, shape=(4,4), strides=(4,1), offsets=(0,0), block_shape=(2,4))
+    tl.store(tl.advance(out,(0,0)),v,boundary_check=[0,1])
+  }
+private def procedureSignature : CallSignature where
+  pointers := [("x_ptr",.fp32),("y_ptr",.fp16)]
+def procedureInstance (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  instantiate_source_procedure descriptorProcedure signature procedureSignature
+    procedure_args [x_ptr := x_ptr,y_ptr := y_ptr]
+def pointerInstance (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  instantiate_source_procedure pointerProcedure signature procedureSignature
+    procedure_args [x_ptr := x_ptr,y_ptr := y_ptr]
+example (x y : RegionName) : procedureInstance x y = pointerInstance x y := rfl
+def legacyProcedureInstance (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  instantiate_source_procedure legacyDescriptorProcedure signature procedureSignature
+    procedure_args [x_ptr := x_ptr,y_ptr := y_ptr]
+example (x y : RegionName) : legacyProcedureInstance x y = pointerInstance x y := rfl
+
+/-- error: procedure ABI must cover exactly its original parameters and constexprs -/
+#guard_msgs in
+example (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  instantiate_source_procedure descriptorProcedure
+    signature ({pointers := [("x_ptr",.fp32)]} : CallSignature)
+    procedure_args [x_ptr := x_ptr,y_ptr := y_ptr]
+
+def procedureCaller (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  with_triton_call procedureSignature call_args [] source_procedures [helper := descriptorProcedure] in triton {
+    helper(x_ptr=x_ptr,y_ptr=y_ptr)
+  }
+def pointerCaller (x_ptr y_ptr : RegionName) : ComputeKernel :=
+  with_triton_call procedureSignature call_args [] source_procedures [helper := pointerProcedure] in triton {
+    helper(x_ptr=x_ptr,y_ptr=y_ptr)
+  }
+example (x y : RegionName) : procedureCaller x y = pointerCaller x y := rfl
+
+-- #449: stored procedures reject generated conditional dimensions; they must
+-- not silently accept a descriptor whose dtype/shape specialization is missing.
+/-- error: Lean expressions cannot occur in a source procedure -/
+#guard_msgs in
+example : SourceProcedure :=
+  with_triton_params (x, FLAG) constexpr_args [FLAG] in triton {
+    d = tl.make_tensor_descriptor(x, shape=[8,8], strides=[8,1], block_shape=[2, 8 if not FLAG else 4])
+    v = d.load([0,0])
+  }
 
 end VeriTile.Tests.Dist.TensorDescriptorSource

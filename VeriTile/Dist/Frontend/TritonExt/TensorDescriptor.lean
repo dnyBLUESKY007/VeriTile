@@ -3,11 +3,14 @@ Sequential tensor descriptors, lowered to the existing block-pointer syntax.
 
 Triton 3.5.1 documents a descriptor's shape, strides and block shape;
 loads zero-fill outside the tensor and stores ignore those lanes:
-https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L1293-L1309
-https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L2053-L2103
+https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L1389-L1407
+https://github.com/triton-lang/triton/blob/v3.5.1/python/triton/language/core.py#L2226-L2280
 Accessed 2026-11-13. Device lowering is compiler trust base; documented alignment and stride
-requirements remain source input preconditions.
+requirements remain source input preconditions. Source procedures inherit their
+existing prohibition on Lean expressions, so conditional block dimensions are
+accepted through the ordinary/signature entrypoints, not stored procedures (#449).
 -/
+import VeriTile.Dist.Frontend.TritonExt.SourceHelperSyntax
 import VeriTile.Triton.DSL.PythonFullConstructors
 
 namespace VeriTile.Dist.Frontend.TritonExt.TensorDescriptor
@@ -132,7 +135,9 @@ def elaborate : TermElab := fun stx expected => do
 -- Signature checks must see descriptor reads/writes before validating pointer
 -- ports, inferring storage types and inserting the source's store conversion.
 @[term_elab VeriTile.Triton.DSL.CallSignature.withSignature,
-  term_elab VeriTile.Triton.DSL.CallSignature.withCall]
+  term_elab VeriTile.Triton.DSL.CallSignature.withCall,
+  term_elab VeriTile.Triton.DSL.SourceProcedures.sourceParams,
+  term_elab VeriTile.Triton.DSL.SourceProcedures.sourceProcedure]
 def elaborateSource : TermElab := fun stx expected => do
   let raw := stx.getArgs.back!
   let .ok source := RawSourceText.normalize raw.getAtomVal | throwUnsupportedSyntax
