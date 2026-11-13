@@ -26,6 +26,6 @@ erasure. -/
 theorem bridge_exec {ck : ComputeKernel} {ak : AlgKernel}
     (s : Structural.State (WithBot ℝ))
     (h : ck.toAlgorithm? = .ok ak) (pre : BridgePre ck s) :
-    (Structural.exec realAlgebra ck s).map erase = exec ak (erase s) := sorry
+    (Structural.exec realAlgebra ck s).map erase = VeriTile.Triton.exec ak (erase s) := sorry
 
 end VeriTile.Interp

@@ -15,6 +15,7 @@ states the intended meaning of each name.
 -/
 import VeriTile.Triton
 import VeriTile.Triton.Float.Structural
+import VeriTile.Interp.Exec
 import VeriTile.Interp.Algebra
 import VeriTile.Interp.Mirror
 import VeriTile.Interp.State
@@ -23,10 +24,5 @@ namespace VeriTile.Interp
 
 open VeriTile.Triton
 open VeriTile.Triton.FP
-
-/-- Stub (I2.4). Executes one program instance of a kernel; `none` is
-execution failure. -/
-opaque interp {α : Type} [Inhabited α] (M : CAlgebra α) (kq : QKernel) (s : State α) :
-    Option (State α)
 
 end VeriTile.Interp
