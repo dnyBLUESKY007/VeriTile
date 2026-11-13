@@ -40,7 +40,7 @@ elab "#forkTargetAudit " "[" modules:ident,* "]" : command => do
       let file := String.intercalate "/" (origin.components.map Name.toString) ++ ".lean"
       rows := rows.push s!"AXIOM\t{file}:{userName}"
     let used := info.type.getUsedConstants ++
-      ((info.value? (allowOpaque := true)).map (·.getUsedConstants)).getD #[]
+      ((info.value? (allowOpaque := Bool.true)).map (·.getUsedConstants)).getD #[]
     if used.contains ``sorryAx then rows := rows.push s!"SORRY\t{origin}\t{userName}"
   for row in rows.qsort (· < ·) do
     liftIO <| IO.println row
