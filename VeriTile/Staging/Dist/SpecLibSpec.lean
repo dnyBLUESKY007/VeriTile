@@ -75,38 +75,13 @@ Decisions that the tickets left open:
 16. Negative examples are concrete instances; S7.2–S7.5 choose them.
 -/
 import VeriTile.Triton.KernelLemmas.Matmul
+import VeriTile.Dist.Spec.AllReduce
 
 namespace VeriTile.Dist
 
 open VeriTile.Triton
 
 /-! ## Rank-indexed tensors and reduction orders -/
-
-/-- Owner: S7.2. One real tensor per rank: `x r i` is the element at
-index `i` of the tensor of rank `r`. -/
-abbrev RankTensor (numRanks : Nat) (ι : Type) : Type := Fin numRanks → ι → ℝ
-
-/-- Owner: S7.2. The order of a sum over operands named by `ι`:
-`zero` is the empty sum, `input i` is operand `i`, `add l r` adds the value of
-`l` and the value of `r`. -/
-inductive ReduceOrder (ι : Type) where
-  | zero : ReduceOrder ι
-  | input : ι → ReduceOrder ι
-  | add : ReduceOrder ι → ReduceOrder ι → ReduceOrder ι
-
-/-- Owner: S7.2. The value of a sum in the given order, with `f i`
-as operand `i`, in any carrier `α` that has a zero and an addition. -/
-def ReduceOrder.eval {ι α : Type} [Zero α] [Add α] (f : ι → α) : ReduceOrder ι → α
-  | .zero => 0
-  | .input i => f i
-  | .add l r => l.eval f + r.eval f
-
-/-- Owner: S7.2. The operands of an order, from left to right, each
-as often as it occurs. -/
-def ReduceOrder.leaves {ι : Type} : ReduceOrder ι → List ι
-  | .zero => []
-  | .input i => [i]
-  | .add l r => l.leaves ++ r.leaves
 
 /-- UNSIGNED. Owner: S7.2. The left fold from zero over a list of operands:
 `ofList [a, b, c]` is `((0 + a) + b) + c`. -/
@@ -159,23 +134,6 @@ result is row `i` of the chunk of rank `q`. -/
 theorem allGather_apply {numRanks n : Nat} {ι : Type} (x : RankTensor numRanks (Fin n × ι))
     (r q : Fin numRanks) (i : Fin n) (j : ι) :
     allGather x r (finProdFinEquiv (q, i), j) = x q (i, j) := sorry
-
-/-! ## Allreduce (S7.3) -/
-
-/-- Owner: S7.3. Every rank holds a tensor. Afterwards rank `r`
-holds the sum over ranks; its element at index `i` is added in the order
-`order r i`. -/
-noncomputable def allReduce {numRanks : Nat} {ι : Type}
-    (order : Fin numRanks → ι → ReduceOrder (Fin numRanks)) (x : RankTensor numRanks ι) :
-    RankTensor numRanks ι :=
-  fun r i => (order r i).eval fun q => x q i
-
-/-- Owner: S7.3. Two orders that add the same operands equally often
-give the same allreduce result over `ℝ`. -/
-theorem allReduce_eq_of_leaves_perm {numRanks : Nat} {ι : Type}
-    (order₁ order₂ : Fin numRanks → ι → ReduceOrder (Fin numRanks))
-    (h : ∀ r i, (order₁ r i).leaves.Perm (order₂ r i).leaves) (x : RankTensor numRanks ι) :
-    allReduce order₁ x = allReduce order₂ x := sorry
 
 /-! ## All-to-all (S7.4) -/
 
