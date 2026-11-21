@@ -328,10 +328,13 @@ require reassessment.
 The six report entries above cover all four requested trackers. E3-TD-169's
 faulty expression is at the pin, but W1 prevents a valid address-corrected
 control. E3-TS-63 remains an unconfirmed protocol audit; the pinned test has
-in-kernel initialization and only one barrier phase. The two TileLang reports
-are now source-level race candidates under the documented weakest guarantees,
-with ancestry established and runtime persistence untested. The two DeepEP
-entries remain host integration leads (one also outside the selected mode).
+in-kernel initialization and only one barrier phase. E3-TL-3527 and the
+cross-iteration overwrite in E3-TL-2613 remain source-level race candidates under
+the documented weakest guarantees. The read after the all-thread synchronous
+`T.copy` in E3-TL-2613 remains a compiler defect outside the proof boundary.
+For both TileLang reports, ancestry is established and runtime persistence is
+untested. The two DeepEP entries remain host integration leads (one also outside
+the selected mode).
 None is an accepted VeriTile detection or a fresh GPU reproduction.
 
 **These entries are not a rate.** The appendix is complete for the sixteen
