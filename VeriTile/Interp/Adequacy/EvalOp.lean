@@ -506,28 +506,28 @@ theorem evalOp_eq (M : CAlgebra α) (p : Option ComputeDType)
     match mem, msk with
     | .region r off, .none =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
-      simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p off s, ← boundaryZero_eq,
+      simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p off s,
       State.lift_mem, State.lift_undef]
     | .region r off, .mask active =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
       simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p off s, ← evalOp_eq M p active s,
-      ← boundaryZero_eq, State.lift_mem, State.lift_undef]
+      State.lift_mem, State.lift_undef]
     | .region r off, .maskOther active other =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
       simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p off s, ← evalOp_eq M p active s,
-      ← evalOp_eq M p other s, ← boundaryZero_eq, State.lift_mem, State.lift_undef]
+      ← evalOp_eq M p other s, State.lift_mem]
     | .ptr ptr, .none =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
-      simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p ptr s, ← boundaryZero_eq,
+      simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p ptr s,
       State.lift_mem, State.lift_undef]
     | .ptr ptr, .mask active =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
       simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p ptr s, ← evalOp_eq M p active s,
-      ← boundaryZero_eq, State.lift_mem, State.lift_undef]
+      State.lift_mem, State.lift_undef]
     | .ptr ptr, .maskOther active other =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
       simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p ptr s, ← evalOp_eq M p active s,
-      ← evalOp_eq M p other s, ← boundaryZero_eq, State.lift_mem, State.lift_undef]
+      ← evalOp_eq M p other s, State.lift_mem]
     | .blockPtr ptr checks, .none =>
       rw [evalOp_unfold, Structural.evalOp_unfold] <;>
       simp only [QMemAccess.toReal, QMaskOpt.toReal, ← evalOp_eq M p ptr s, ← boundaryZero_eq,
@@ -636,31 +636,36 @@ private def withNat (n : Nat) : State α :=
 private def withInt (n : Int) : State α :=
   emptyState.setReg "x" .int [] fun _ => n
 
+/-- Negative example for `boundaryZero_eq`: changing the lifted algebra changes zero padding. -/
 example (M : CAlgebra ℚ) :
     boundaryZero { M with literal := fun _ _ q => q } none .real ≠
       Structural.boundaryZero { M with literal := fun _ _ q => q + 1 }.lift none .real := by
   simp [boundaryZero, Structural.boundaryZero, CAlgebra.lift_literal_zero]
 
+/-- Negative example for `evalOp_eq`: changing the lifted register state changes an operation. -/
 example (M : CAlgebra α) :
     evalOp M none (.ref .nat [] "x") (withNat 0) ≠
       Structural.evalOp M.lift none (.ref .nat [] "x") (withNat 1).lift := by
   rw [evalOp_unfold, Structural.evalOp_unfold]
   intro h
   have := congrArg (fun v => v.map (· ())) h
-  simp [withNat, State.getReg, State.setReg, State.lift, ComputeDType.eraseDType] at this
+  simp [withNat, State.getReg, State.setReg, State.lift] at this
 
+/-- Negative example for `evalOffsets_eq`: changing the lifted register state changes offsets. -/
 example (M : CAlgebra α) :
     evalOffsets M none [.ref .nat [] "x"] (withNat 0) ≠
       Structural.evalOffsets M.lift none [.ref .nat [] "x"] (withNat 1).lift := by
   simp only [evalOffsets, Structural.evalOffsets, evalOp_unfold, Structural.evalOp_unfold]
-  simp [withNat, State.getReg, State.setReg, State.lift, ComputeDType.eraseDType]
+  simp [withNat, State.getReg, State.setReg, State.lift]
 
+/-- Negative example for `evalDeltas_eq`: changing the lifted register state changes deltas. -/
 example (M : CAlgebra α) :
     evalDeltas M none [.ref .int [] "x"] (withInt 0) ≠
       Structural.evalDeltas M.lift none [.ref .int [] "x"] (withInt 1).lift := by
   simp only [evalDeltas, Structural.evalDeltas, evalOp_unfold, Structural.evalOp_unfold]
   simp [withInt, State.getReg, State.setReg, State.lift]
 
+/-- Negative example for `evalComputeOp_eq`: changing the lifted register state changes a compute operation. -/
 example (M : CAlgebra α) :
     evalComputeOp M (.alg .uint32 (.ref .nat [] "x")) (withNat 0) ≠
       Structural.evalComputeOp M.lift (.alg .uint32 (.ref .nat [] "x")) (withNat 1).lift := by
@@ -669,12 +674,13 @@ example (M : CAlgebra α) :
   have := congrArg (fun v => v.map (· ())) h
   simp [withNat, State.getReg, State.setReg, State.lift, ComputeDType.eraseDType] at this
 
+/-- Negative example for `evalExpr_eq`: changing the lifted register state changes an expression. -/
 example (M : CAlgebra α) :
     evalExpr M (.alg (.ref .nat [] "x")) (withNat 0) ≠
       Structural.evalExpr M.lift (.alg (.ref .nat [] "x")) (withNat 1).lift := by
   simp only [evalExpr, Structural.evalExpr, evalOp_unfold, Structural.evalOp_unfold]
   intro h
   have := congrArg (fun v => v.map (· ())) h
-  simp [withNat, State.getReg, State.setReg, State.lift, ComputeDType.eraseDType] at this
+  simp [withNat, State.getReg, State.setReg, State.lift] at this
 
 end VeriTile.Interp
