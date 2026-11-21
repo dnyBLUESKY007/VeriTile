@@ -6,6 +6,8 @@ check), a missing scale factor that stays inside the 1e-2 gate (by the strict
 column only) and a misplaced NaN.
 """
 import json
+import runpy
+import subprocess
 from pathlib import Path
 import struct
 import sys
@@ -125,6 +127,70 @@ class Compare(unittest.TestCase):
 
 
 class Report(unittest.TestCase):
+    def test_non_ok_tests_get_one_null_output_row(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            request, bundle = root / 'request', root / 'bundle'
+            request.mkdir()
+            (bundle / 'clean/out').mkdir(parents=True)
+            spec = {'name': 'out', 'dtype': 'fp32', 'shape': [1]}
+            tensorfile.write(bundle / 'clean/out/out.tensor', fp32(1))
+            self.assertEqual(tensorfile.read(bundle / 'clean/out/out.tensor'), fp32(1))
+            (bundle / 'DONE').touch()
+            for status in ('runtime_error', 'compile_error', 'timeout', 'skipped_env', 'input_mismatch', 'not_run'):
+                for outputs in ([], [spec], [spec, {**spec, 'name': 'second'}]):
+                    with self.subTest(status=status, outputs=len(outputs)):
+                        (request / 'batch.json').write_text(json.dumps({
+                            'batch_id': 'mixed', 'mode': 'compare', 'tests': [
+                                {'id': 'clean', 'outputs': [spec]}, {'id': 'failed', 'outputs': outputs}]}))
+                        statuses = {'clean': 'ok'}
+                        if status != 'not_run':
+                            statuses['failed'] = status
+                        (bundle / 'manifest.json').write_text(json.dumps({'batch_id': 'mixed', 'tests': statuses}))
+                        built = report.build(request, bundle, {'clean': {'out': fp32(1)}})
+                        self.assertFalse(built['passed'])
+                        self.assertEqual(len(built['rows']), 2)
+                        self.assertTrue(built['rows'][0]['passed'])
+                        self.assertEqual(built['rows'][1], {'test': 'failed', 'output': None,
+                                         'status': status, 'against': None, 'passed': False})
+                        self.assertEqual(json.loads(json.dumps(built)), built)
+                        markdown = report.render(built)
+                        self.assertIn('## Batch `mixed`: FAIL', markdown)
+                        self.assertIn(f'| failed | - | {status} |', markdown)
+        self.assertFalse(root.exists())
+
+    def test_smoke_judge_cli_renders_passing_and_failed_tests(self):
+        repo = Path(__file__).resolve().parents[2]
+        judge = repo / 'experiments/interp_gpu/smoke/judge.py'
+        batch = repo / 'experiments/interp_gpu/batches/smoke-triton-001'
+        references = runpy.run_path(str(judge))['references'](batch)
+        with tempfile.TemporaryDirectory() as temp:
+            bundle = Path(temp)
+            for test_id, tensors in references.items():
+                (bundle / test_id / 'out').mkdir(parents=True)
+                for name, tensor in tensors.items():
+                    path = bundle / test_id / 'out' / (name + '.tensor')
+                    tensorfile.write(path, tensor)
+                    self.assertEqual(tensorfile.read(path), tensor)
+            statuses = dict.fromkeys(references, 'ok')
+            batch_id = json.loads((batch / 'batch.json').read_text())['batch_id']
+            (bundle / 'DONE').touch()
+            for failed in (False, True):
+                with self.subTest(failed=failed):
+                    test_id = next(iter(statuses))
+                    if failed:
+                        statuses[test_id] = 'runtime_error'
+                    (bundle / 'manifest.json').write_text(json.dumps({'batch_id': batch_id, 'tests': statuses}))
+                    result = subprocess.run([sys.executable, str(judge), str(bundle)], cwd=repo,
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode, int(failed), result.stderr)
+                    self.assertIn(f"## Batch `{batch_id}`: {'FAIL' if failed else 'pass'}", result.stdout)
+                    if failed:
+                        self.assertIn(f'| {test_id} | - | runtime_error |', result.stdout)
+                        self.assertEqual(sum(line.startswith(f'| {test_id} |')
+                                             for line in result.stdout.splitlines()), 1)
+        self.assertFalse(bundle.exists())
+
     def test_report_over_a_bundle_written_by_gpurun(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -170,7 +236,7 @@ class Report(unittest.TestCase):
         self.assertEqual(markdown[0], '## Batch `self-test`: FAIL')
         self.assertIn('| clean | out | ok | torch | 0 | - | 0 | 0 | 0 | 0 | 0 | 0 | pass |', markdown)
         self.assertIn('| fault/mask | out | ok | reference | 2 | - | 0 | 0 | 0 | 0 | 0 | 0 | FAIL |', markdown)
-        self.assertIn('| crash | out | runtime_error | - | - | - | - | - | - | - | - | - | FAIL |', markdown)
+        self.assertIn('| crash | - | runtime_error | - | - | - | - | - | - | - | - | - | FAIL |', markdown)
         self.assertIn('| unjudged | out | ok | - | - | - | - | - | - | - | - | - | FAIL: no reference tensor |', markdown)
         scale = next(line for line in markdown if line.startswith('| fault/scale |'))
         self.assertRegex(scale, r'^\| fault/scale \| out \| ok \| reference \| 0 \| - \| 0 \| 0 \| 9 \| 0\.0\d+ \| 0\.00398 \| \d+ \| pass \|$')

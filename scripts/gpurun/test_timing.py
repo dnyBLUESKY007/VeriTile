@@ -125,6 +125,8 @@ class Timing(unittest.TestCase):
             timing.child(work)
         self.assertEqual(events, [('device', 0)] +
                          [('device', 0), 'buffer', 'buffer', ('sync', 0), 'clock', ('sync', 0), 'clock'] * 2)
+        self.assertEqual((self.root / 'input-hashes').read_text().splitlines(),
+                         [name + ' ' + test['inputs'][0]['sha256'] for name in timing.ORDER])
 
     def test_subprocess_failure_preserves_partial_times_and_stops(self):
         test = case(launch={'grid': [1], 'stop_on': 3})

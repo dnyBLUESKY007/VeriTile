@@ -9,8 +9,9 @@ the development-side reference outputs, either as a directory with
 The result is JSON-serialisable: `batch_id`, `passed` and `rows`. A test whose
 status is `ok` gets one row per output and reference it is compared with:
 `reference`, and `torch` when the bundle holds `ref/<name>.tensor`. Any other
-status, a missing tensor or no reference at all gives one row that does not
-pass. Nothing from the bundle is taken as a verdict. `render` turns the result
+status gives a single non-passing row with `output: None`, even with no
+declared outputs. A missing tensor or no reference gives a non-passing output
+row. Nothing from the bundle is taken as a verdict. `render` turns the result
 into Markdown.
 """
 import json
@@ -42,12 +43,12 @@ def build(request_dir, bundle_dir, references):
     rows = []
     for test in batch['tests']:
         status = manifest['tests'].get(test['id'], 'not_run')
+        if status != 'ok':
+            rows.append({'test': test['id'], 'output': None, 'status': status, 'against': None, 'passed': False})
+            continue
         for spec in test['outputs']:
             file = spec['name'] + '.tensor'
             row = {'test': test['id'], 'output': spec['name'], 'status': status, 'against': None, 'passed': False}
-            if status != 'ok':
-                rows.append(row)
-                continue
             try:
                 out = read_if_present(bundle / test['id'] / 'out' / file)
                 if out is None:
@@ -79,7 +80,7 @@ def render(report):
              '| ' + ' | '.join(HEADER) + ' |', '|' + ' --- |' * len(HEADER)]
     for row in report['rows']:
         result = verdict[row['passed']] + (f": {row['error']}" if 'error' in row else '')
-        cells = [row['test'], row['output'], row['status'], row['against'] or '-',
+        cells = [row['test'], cell(row['output']), row['status'], row['against'] or '-',
                  *(cell(row.get(column)) for column in COLUMNS), result]
         lines.append('| ' + ' | '.join(cells) + ' |')
     lines += ['', 'The check columns count violating elements. Footprint, Exact, NaN / Inf and Gate decide the '

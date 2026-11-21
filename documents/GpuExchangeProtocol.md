@@ -226,7 +226,10 @@ exits 0 when all requested checks pass, 1 for a failed or missing comparison,
 and 2 for an invalid or incomplete bundle/request. Without `--references`, it
 compares only the two GPU outputs and marks `reference_requested: false`; this
 does not establish agreement with the interpreter. A requested but absent
-reference, missing output or unsuccessful GPU status cannot pass.
+reference, missing output or unsuccessful GPU status cannot pass. For both
+`compare` and `agree`, any test whose status is not `ok` gets a single
+non-passing row with `output` null, regardless of its declared outputs; an
+absent test status is `not_run`. Markdown renders the null output as `-`.
 
 ## 8. Automation on the GPU side
 

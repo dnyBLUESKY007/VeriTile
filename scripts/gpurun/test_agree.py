@@ -139,6 +139,10 @@ class Agree(unittest.TestCase):
                         case(id='error', pair={'original': 'kernels.py::original', 'candidate': 'kernels.py::boom'})])
         manifest = json.loads((self.out / 'manifest.json').read_text())
         self.assertEqual(manifest['tests'], {'no_gpu': 'skipped_env', 'mismatch': 'input_mismatch', 'error': 'runtime_error'})
+        skipped = json.loads((self.out / 'no_gpu/meta.json').read_text())
+        self.assertEqual(skipped['reasons'], ['agree needs one visible GPU',
+                                             'agree needs torch in the environment',
+                                             'agree needs triton in the environment'])
         report = compare_pair.build(self.batch, self.out)
         self.assertFalse(report['passed'])
         self.assertTrue(all(row['against'] is None for row in report['rows']))
